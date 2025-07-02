@@ -62,7 +62,8 @@ def login():
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
         # Check credentials in both admin and contractor tables
-        connection = db.get_db_connection()
+        connection = db.create_connection()
+
         if connection:
             try:
                 cursor = connection.cursor(dictionary=True)
