@@ -771,4 +771,9 @@ class Database:
 # Run this file directly to initialize the database
 if __name__ == "__main__":
     db = Database()
-    db.initialize_database()
+    conn = db.create_connection()
+    if conn:
+        print("✅ Connected to MySQL successfully!")
+    else:
+        print("❌ Database connection failed!")
+
