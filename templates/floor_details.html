@@ -1,0 +1,1274 @@
+{% extends "base.html" %}
+
+{% block title %}{{ floor.prefix }}{{ floor.number }} - Floor Details{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="active">
+                <a href="{{ url_for('projects') }}">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Projects</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('contractors.contractors_list') }}">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Contractors</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('snag_inspectors.inspectors_list') }}">
+                    <i class="fas fa-user-secret"></i>
+                    <span>SNAG Inspectors</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('client_relations.clients_list') }}">
+                    <i class="fas fa-handshake"></i>
+                    <span>Client Relations</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('appointments.appointments') }}">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Appointments</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">
+                    <a href="{{ url_for('projects') }}">Projects</a>
+                    <i class="fas fa-chevron-right"></i>
+                    <a href="{{ url_for('project_details', project_id=project.id) }}">{{ project.project_name }}</a>
+                    <i class="fas fa-chevron-right"></i>
+                    <span>{{ floor.prefix }}{{ floor.number }}</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session.admin_name }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Floor Details Content -->
+        <div class="dashboard-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Floor Details Container -->
+            <div class="floor-details-container">
+                <!-- Image Section -->
+                <div class="floor-image-section">
+                    <div class="floor-image-container">
+                        {% if project.image_data %}
+                        <img src="/api/projects/{{ project.id }}/image/view?t={{ timestamp }}" alt="{{ project.project_name }}" class="project-image">
+                        {% else %}
+                        <div class="image-placeholder">
+                            <i class="fas fa-building"></i>
+                            <span>{{ project.project_name }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Details Section -->
+                <div class="floor-details-section">
+                    <div class="detail-row">
+                        <span class="detail-label">Floor Name</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            <span>{{ floor.prefix }}{{ floor.number }}</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Project</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            <span>{{ project.project_name }}</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Total Units</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            <span id="totalUnitsCount">0</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Created Date</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            {% if floor.created_at %}
+                            <span>{{ floor.created_at.strftime('%B %d, %Y') }}</span>
+                            {% else %}
+                            <span>Not available</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Units Management Section -->
+            <div class="units-management-section">
+                <div class="section-header">
+                    <h3>Units Management</h3>
+                    <div class="action-buttons">
+                        <button id="addUnitBtn" class="btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Add Unit
+                        </button>
+                        <button id="bulkAddBtn" class="btn-secondary">
+                            <i class="fas fa-layer-group"></i>
+                            Bulk Add
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="units-grid" id="unitsGrid">
+                    <!-- Units will be loaded here -->
+                </div>
+                
+                <div class="empty-units" id="emptyUnits">
+                    <i class="fas fa-home"></i>
+                    <p>No units added yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Unit Modal -->
+<div id="addUnitModal" class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>Add Unit</h3>
+            <button class="modal-close" onclick="closeAddUnitModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="addUnitForm" class="modal-form" onsubmit="addUnit(event)">
+            <div class="form-group">
+                <label for="unitNumber">Unit Number</label>
+                <input type="text" id="unitNumber" name="unitNumber" placeholder="e.g., 101, A1, Unit-1" required>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAddUnitModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Add Unit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Add Units Modal -->
+<div id="bulkAddUnitsModal" class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3><i class="fas fa-layer-group"></i> Bulk Add Units</h3>
+            <button class="modal-close" onclick="closeBulkAddUnitsModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="bulkAddUnitsForm" class="modal-form" onsubmit="bulkAddUnits(event)">
+            <div class="bulk-add-description">
+                <p>Add multiple units at once by specifying a range.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="bulkUnitPrefix">Unit Prefix</label>
+                <input type="text" id="bulkUnitPrefix" name="bulkUnitPrefix" placeholder="e.g., Unit, A, B" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="startUnitNumber">Start Number</label>
+                    <input type="number" id="startUnitNumber" name="startUnitNumber" placeholder="1" min="1" required>
+                </div>
+
+                <div class="range-separator">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+
+                <div class="form-group">
+                    <label for="endUnitNumber">End Number</label>
+                    <input type="number" id="endUnitNumber" name="endUnitNumber" placeholder="10" min="1" required>
+                </div>
+            </div>
+
+            <div class="bulk-preview">
+                <div class="preview-header">
+                    <i class="fas fa-eye"></i>
+                    Preview
+                </div>
+                <div class="preview-content" id="unitsPreviewContent">
+                    Enter range to see preview
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeBulkAddUnitsModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Add Units</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Unit Details Modal -->
+<div class="unit-details-modal" id="unitDetailsModal">
+    <div class="unit-details-container">
+        <div class="unit-details-header">
+            <h3 class="unit-details-title">
+                <i class="fas fa-home"></i>
+                <span id="unitDetailsTitle">Unit Details</span>
+            </h3>
+            <button class="unit-details-close" onclick="closeUnitDetails()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="unit-details-body">
+            <!-- Unit Information Section -->
+            <div class="unit-detail-section">
+                <h4><i class="fas fa-info-circle"></i> Unit Information</h4>
+
+                <div class="unit-detail-row">
+                    <span class="unit-detail-label">Unit Number</span>
+                    <span class="unit-detail-value" id="unitDetailNumber">-</span>
+                </div>
+
+                <div class="unit-detail-row">
+                    <span class="unit-detail-label">Status</span>
+                    <div class="unit-detail-value">
+                        <span id="displayUnitStatus" class="unit-status">Available</span>
+                        <select id="editUnitStatus" class="unit-detail-select" style="display: none;" onchange="saveUnitStatus()">
+                            <option value="available">Available</option>
+                            <option value="sold">Sold</option>
+                            <option value="rented">Rented</option>
+                            <option value="reserved">Reserved</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="unit-detail-row">
+                    <span class="unit-detail-label">Created Date</span>
+                    <span class="unit-detail-value" id="unitDetailCreated">-</span>
+                </div>
+            </div>
+
+            <!-- Owner Information Section -->
+            <div class="unit-detail-section">
+                <h4><i class="fas fa-user"></i> Owner Information</h4>
+
+                <div class="unit-detail-row">
+                    <span class="unit-detail-label">Owner Name</span>
+                    <div class="unit-detail-value">
+                        <span id="displayOwnerName" class="editable" onclick="editOwnerName()">Not assigned</span>
+                        <input type="text" id="editOwnerName" class="unit-detail-input" style="display: none;" onblur="saveOwnerName()" onkeypress="handleUnitEnterKey(event, saveOwnerName)" placeholder="Enter owner name">
+                    </div>
+                </div>
+
+                <div class="unit-detail-row">
+                    <span class="unit-detail-label">Phone Number</span>
+                    <div class="unit-detail-value">
+                        <span id="displayOwnerPhone" class="editable" onclick="editOwnerPhone()">Not provided</span>
+                        <input type="tel" id="editOwnerPhone" class="unit-detail-input" style="display: none;" onblur="saveOwnerPhone()" onkeypress="handleUnitEnterKey(event, saveOwnerPhone)" placeholder="Enter phone number">
+                    </div>
+                </div>
+
+                <div class="unit-detail-row">
+                    <span class="unit-detail-label">Email Address</span>
+                    <div class="unit-detail-value">
+                        <span id="displayOwnerEmail" class="editable" onclick="editOwnerEmail()">Not provided</span>
+                        <input type="email" id="editOwnerEmail" class="unit-detail-input" style="display: none;" onblur="saveOwnerEmail()" onkeypress="handleUnitEnterKey(event, saveOwnerEmail)" placeholder="Enter email address">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="unit-actions">
+            <button class="unit-action-btn secondary" onclick="closeUnitDetails()">
+                <i class="fas fa-times"></i>
+                Close
+            </button>
+            <button class="unit-action-btn primary" onclick="saveAllUnitDetails()">
+                <i class="fas fa-save"></i>
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Unit Modal -->
+<div id="editUnitModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container professional">
+        <div class="modal-header">
+            <h3>Edit Unit</h3>
+            <button class="modal-close" onclick="closeEditUnitModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form class="modal-form" onsubmit="updateUnit(event)">
+            <div class="form-group">
+                <label for="editUnitNumber">Unit Name</label>
+                <input type="text" id="editUnitNumber" name="unitNumber" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeEditUnitModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Update Unit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Notification Popup -->
+<div class="notification-popup" id="notificationPopup">
+    <div class="notification-header">
+        <div class="notification-title">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="notificationTitle">Error</span>
+        </div>
+        <button class="notification-close" onclick="closeNotification()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <p class="notification-message" id="notificationMessage">Something went wrong</p>
+</div>
+
+<script>
+// Floor Details JavaScript
+const FLOOR_ID = {{ floor.id }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup event listeners
+    document.getElementById('addUnitBtn').addEventListener('click', openAddUnitModal);
+    document.getElementById('bulkAddBtn').addEventListener('click', openBulkAddUnitsModal);
+
+    // Load units and setup bulk preview
+    loadUnits();
+    setupBulkPreview();
+
+    // Check if we need to refresh (coming back from deleted unit)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('refresh') === 'true') {
+        // Force reload units after a short delay
+        setTimeout(() => {
+            loadUnits(true); // Force refresh
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 500);
+    }
+});
+
+function loadUnits(forceRefresh = false) {
+    console.log('Loading units for floor ' + FLOOR_ID + (forceRefresh ? ' (force refresh)' : ''));
+
+    // Add cache busting parameter if force refresh
+    const url = '/api/floors/' + FLOOR_ID + '/units' + (forceRefresh ? '?t=' + Date.now() : '');
+
+    fetch(url, {
+        cache: forceRefresh ? 'no-cache' : 'default'
+    })
+        .then(response => response.json())
+        .then(units => {
+            displayUnits(units);
+            updateUnitCounts(units.length);
+        })
+        .catch(error => {
+            console.error('Error loading units:', error);
+            document.getElementById('emptyUnits').style.display = 'block';
+            updateUnitCounts(0);
+        });
+}
+
+function displayUnits(units) {
+    const unitsGrid = document.getElementById('unitsGrid');
+    const emptyUnits = document.getElementById('emptyUnits');
+
+    if (units.length === 0) {
+        unitsGrid.innerHTML = '';
+        emptyUnits.style.display = 'block';
+        return;
+    }
+
+    // Sort units by prefix first, then by number
+    const sortedUnits = units.sort((a, b) => {
+        // Parse unit numbers to extract prefix and number
+        const parseUnit = (unitStr) => {
+            // Handle cases like "unit 1", "ae 1", "unit -1", "ae -1", "unit1", "ae1"
+            const match = unitStr.match(/^([a-zA-Z]+)\s*(-?\d+)$/);
+            if (match) {
+                return {
+                    prefix: match[1].toLowerCase(),
+                    number: parseInt(match[2])
+                };
+            }
+            // If no match, treat as unit with number
+            return {
+                prefix: 'unit',
+                number: parseInt(unitStr) || 0
+            };
+        };
+
+        const aParsed = parseUnit(a.unit_number);
+        const bParsed = parseUnit(b.unit_number);
+
+        // First sort by prefix with custom order: Ae first, then Unit
+        if (aParsed.prefix !== bParsed.prefix) {
+            // Custom prefix order: ae first, then unit, then others
+            const getPrefixOrder = (prefix) => {
+                if (prefix === 'ae') return 1;
+                if (prefix === 'unit') return 2;
+                return 3; // Other prefixes come last
+            };
+
+            const aOrder = getPrefixOrder(aParsed.prefix);
+            const bOrder = getPrefixOrder(bParsed.prefix);
+
+            if (aOrder !== bOrder) {
+                return aOrder - bOrder;
+            }
+
+            // If same order level, sort alphabetically
+            return aParsed.prefix.localeCompare(bParsed.prefix);
+        }
+
+        // Then sort by number (convert negative to positive for proper sorting)
+        // This ensures: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12...
+        const aNum = Math.abs(aParsed.number);
+        const bNum = Math.abs(bParsed.number);
+        return aNum - bNum;
+    });
+
+    emptyUnits.style.display = 'none';
+    unitsGrid.innerHTML = sortedUnits.map(unit => `
+        <div class="unit-card" onclick="goToUnitDetails(${unit.id})">
+            <div class="unit-header">
+                <div class="unit-number">${unit.unit_number}</div>
+                <button class="edit-unit-btn" onclick="event.stopPropagation(); editUnitName(${unit.id}, '${unit.unit_number}')" title="Edit Unit Name">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+            <div class="unit-owner">${unit.owner_name || 'No owner assigned'}</div>
+        </div>
+    `).join('');
+}
+
+// Helper function to extract prefix and number from unit number
+function extractPrefixAndNumber(unitNumber) {
+    // Extract prefix and number from unit number string
+    // Examples:
+    // "unit-1" -> {prefix: "unit", number: 1}
+    // "aqa-2" -> {prefix: "aqa", number: 2}
+    // "Unit 10" -> {prefix: "unit", number: 10}
+    // "A1" -> {prefix: "a", number: 1}
+    // "101" -> {prefix: "", number: 101}
+
+    const match = unitNumber.match(/^([a-zA-Z]*[-\s]?)(\d+)$/);
+    if (match) {
+        const prefix = match[1].replace(/[-\s]+$/, '').toLowerCase(); // Remove trailing separators and convert to lowercase
+        const number = parseInt(match[2]);
+        return { prefix, number };
+    }
+
+    // If no number found, treat entire string as prefix
+    return { prefix: unitNumber.toLowerCase(), number: NaN };
+}
+
+// Helper function to extract numeric part from unit number (kept for backward compatibility)
+function extractUnitNumber(unitNumber) {
+    const parts = extractPrefixAndNumber(unitNumber);
+    return parts.number;
+}
+
+function updateUnitCounts(count) {
+    document.getElementById('totalUnitsCount').textContent = count || '0';
+}
+
+// Modal Functions
+function openAddUnitModal() {
+    console.log('Opening add unit modal');
+    const modal = document.getElementById('addUnitModal');
+    modal.classList.add('active');
+    setTimeout(() => {
+        document.getElementById('unitNumber').focus();
+    }, 100);
+}
+
+function closeAddUnitModal() {
+    console.log('Closing add unit modal');
+    const modal = document.getElementById('addUnitModal');
+    modal.classList.remove('active');
+    document.getElementById('addUnitForm').reset();
+}
+
+function openBulkAddUnitsModal() {
+    console.log('Opening bulk add units modal');
+    const modal = document.getElementById('bulkAddUnitsModal');
+    modal.classList.add('active');
+    setTimeout(() => {
+        document.getElementById('bulkUnitPrefix').focus();
+    }, 100);
+}
+
+function closeBulkAddUnitsModal() {
+    console.log('Closing bulk add units modal');
+    const modal = document.getElementById('bulkAddUnitsModal');
+    modal.classList.remove('active');
+    document.getElementById('bulkAddUnitsForm').reset();
+    document.getElementById('unitsPreviewContent').textContent = 'Enter range to see preview';
+}
+
+// Add Unit Function
+function addUnit(event) {
+    event.preventDefault();
+    console.log('Add unit form submitted');
+
+    const formData = new FormData(event.target);
+    const unitData = {
+        floor_id: FLOOR_ID,
+        unit_number: formData.get('unitNumber')
+    };
+
+    console.log('Unit data:', unitData);
+
+    fetch('/api/add_unit', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(unitData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+            showProfessionalPopup('✅ Unit Added Successfully!', 'Unit has been added to the floor successfully.', 'success');
+            closeAddUnitModal();
+            loadUnits();
+        } else {
+            console.log('❌ Add unit error:', data.message);
+            const errorMsg = data.message || 'Error adding unit';
+
+            // Enhanced duplicate detection
+            if (data.error_type === 'duplicate' ||
+                errorMsg.toLowerCase().includes('already exists') ||
+                errorMsg.toLowerCase().includes('duplicate') ||
+                errorMsg.includes('already exist')) {
+                showProfessionalPopup('⚠️ Unit Already Exists', errorMsg, 'duplicate');
+            } else {
+                showProfessionalPopup('❌ Add Unit Failed', errorMsg, 'error');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Network error occurred while adding unit', '❌ Connection Error');
+    });
+}
+
+// Bulk Add Units Function
+function bulkAddUnits(event) {
+    event.preventDefault();
+    console.log('Bulk add units form submitted');
+
+    const formData = new FormData(event.target);
+    const bulkData = {
+        floor_id: FLOOR_ID,
+        prefix: formData.get('bulkUnitPrefix'),
+        start_number: parseInt(formData.get('startUnitNumber')),
+        end_number: parseInt(formData.get('endUnitNumber'))
+    };
+
+    console.log('Bulk data:', bulkData);
+
+    if (bulkData.start_number > bulkData.end_number) {
+        showError('Start number must be less than or equal to end number', 'Invalid Range');
+        return;
+    }
+
+    fetch('/api/bulk_add_units', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bulkData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Bulk response data:', data);
+        if (data.success) {
+            const message = data.skipped_count > 0
+                ? `${data.added_count} units added successfully! (${data.skipped_count} duplicates skipped)`
+                : `${data.added_count} units added successfully!`;
+
+            if (data.skipped_count > 0) {
+                showProfessionalPopup('✅ Units Added Successfully', message, 'success');
+            } else {
+                showProfessionalPopup('✅ Units Added Successfully', message, 'success');
+            }
+            closeBulkAddUnitsModal();
+            loadUnits();
+        } else {
+            if (data.message && data.message.toLowerCase().includes('already exist')) {
+                showProfessionalPopup('⚠️ All Units Already Exist', data.message, 'duplicate');
+            } else {
+                showProfessionalPopup('❌ Bulk Add Failed', data.message || 'Error adding units', 'error');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Network error occurred while adding units', 'Connection Error');
+    });
+}
+
+// Bulk Preview Setup
+function setupBulkPreview() {
+    const prefixInput = document.getElementById('bulkUnitPrefix');
+    const startInput = document.getElementById('startUnitNumber');
+    const endInput = document.getElementById('endUnitNumber');
+
+    [prefixInput, startInput, endInput].forEach(input => {
+        input.addEventListener('input', updateBulkPreview);
+    });
+}
+
+function updateBulkPreview() {
+    const prefix = document.getElementById('bulkUnitPrefix').value;
+    const start = parseInt(document.getElementById('startUnitNumber').value);
+    const end = parseInt(document.getElementById('endUnitNumber').value);
+    const previewContent = document.getElementById('unitsPreviewContent');
+
+    if (!prefix || !start || !end || start > end) {
+        previewContent.innerHTML = '<span style="color: #64748b; font-style: italic;">Enter valid range to see preview</span>';
+        return;
+    }
+
+    const count = end - start + 1;
+
+    // Check for existing units to detect duplicates
+    checkForDuplicates(prefix, start, end).then(duplicateInfo => {
+        const { duplicates, newUnits } = duplicateInfo;
+        const duplicateCount = duplicates.length;
+        const newCount = newUnits.length;
+
+        let previewHTML = `<div class="preview-summary">
+            <div class="preview-title">Will create ${count} units:</div>
+        `;
+
+        if (duplicateCount > 0) {
+            previewHTML += `<div class="preview-duplicates">
+                <i class="fas fa-exclamation-triangle"></i>
+                ${duplicateCount} duplicates will be skipped
+            </div>`;
+        }
+
+        if (newCount > 0) {
+            previewHTML += `<div class="preview-new-units">
+                <i class="fas fa-plus-circle"></i>
+                ${newCount} new units will be added
+            </div>`;
+        }
+
+        previewHTML += `</div>`;
+
+        if (count > 20) {
+            const firstUnits = [];
+            const lastUnits = [];
+
+            for (let i = start; i <= start + 4; i++) {
+                const unitName = `${prefix}${i}`;
+                const isDuplicate = duplicates.includes(unitName);
+                const className = isDuplicate ? 'preview-unit duplicate' : 'preview-unit new';
+                firstUnits.push(`<span class="${className}">${unitName}</span>`);
+            }
+
+            for (let i = end - 4; i <= end; i++) {
+                const unitName = `${prefix}${i}`;
+                const isDuplicate = duplicates.includes(unitName);
+                const className = isDuplicate ? 'preview-unit duplicate' : 'preview-unit new';
+                lastUnits.push(`<span class="${className}">${unitName}</span>`);
+            }
+
+            previewHTML += `
+                <div class="preview-warning">Showing first 5 and last 5 units:</div>
+                <div class="preview-units">
+                    ${firstUnits.join('')}
+                    <span class="preview-ellipsis">...</span>
+                    ${lastUnits.join('')}
+                </div>
+            `;
+        } else {
+            const units = [];
+            for (let i = start; i <= end; i++) {
+                const unitName = `${prefix}${i}`;
+                const isDuplicate = duplicates.includes(unitName);
+                const className = isDuplicate ? 'preview-unit duplicate' : 'preview-unit new';
+                units.push(`<span class="${className}">${unitName}</span>`);
+            }
+            previewHTML += `<div class="preview-units">${units.join('')}</div>`;
+        }
+
+        previewContent.innerHTML = previewHTML;
+    });
+}
+
+// Check for duplicate units
+async function checkForDuplicates(prefix, start, end) {
+    try {
+        const response = await fetch(`/api/floors/${FLOOR_ID}/units`);
+        const existingUnits = await response.json();
+
+        const existingUnitNames = existingUnits.map(unit => unit.unit_number);
+        const duplicates = [];
+        const newUnits = [];
+
+        for (let i = start; i <= end; i++) {
+            const unitName = `${prefix}${i}`;
+            if (existingUnitNames.includes(unitName)) {
+                duplicates.push(unitName);
+            } else {
+                newUnits.push(unitName);
+            }
+        }
+
+        return { duplicates, newUnits };
+    } catch (error) {
+        console.error('Error checking duplicates:', error);
+        return { duplicates: [], newUnits: [] };
+    }
+}
+
+// Unit Details Functions
+let currentUnitId = null;
+
+function openUnitDetails(unitId) {
+    currentUnitId = unitId;
+    console.log('Opening unit details for unit ID:', unitId);
+
+    // Fetch unit details
+    fetch(`/api/unit/${unitId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Unit details response:', data);
+            if (data.success) {
+                populateUnitDetails(data.unit);
+                const modal = document.getElementById('unitDetailsModal');
+                modal.style.display = 'flex';
+                modal.classList.add('show');
+                console.log('Modal should be visible now');
+            } else {
+                showError(data.message || 'Unknown error', 'Load Unit Details Failed');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Network error occurred while loading unit details', 'Connection Error');
+        });
+}
+
+function closeUnitDetails() {
+    const modal = document.getElementById('unitDetailsModal');
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+    currentUnitId = null;
+    console.log('Modal closed');
+}
+
+function populateUnitDetails(unit) {
+    document.getElementById('unitDetailsTitle').textContent = `Unit ${unit.unit_number} Details`;
+    document.getElementById('unitDetailNumber').textContent = unit.unit_number;
+    document.getElementById('unitDetailCreated').textContent = new Date(unit.created_at).toLocaleDateString();
+
+    // Status
+    const status = unit.status || 'available';
+    document.getElementById('displayUnitStatus').textContent = status.toUpperCase();
+    document.getElementById('displayUnitStatus').className = `unit-status ${status}`;
+    document.getElementById('editUnitStatus').value = status;
+
+    // Owner details
+    document.getElementById('displayOwnerName').textContent = unit.owner_name || 'Not assigned';
+    document.getElementById('displayOwnerPhone').textContent = unit.owner_phone || 'Not provided';
+    document.getElementById('displayOwnerEmail').textContent = unit.owner_email || 'Not provided';
+
+    // Set input values
+    document.getElementById('editOwnerName').value = unit.owner_name || '';
+    document.getElementById('editOwnerPhone').value = unit.owner_phone || '';
+    document.getElementById('editOwnerEmail').value = unit.owner_email || '';
+}
+
+// Edit functions
+function editOwnerName() {
+    document.getElementById('displayOwnerName').style.display = 'none';
+    document.getElementById('editOwnerName').style.display = 'block';
+    document.getElementById('editOwnerName').focus();
+}
+
+function editOwnerPhone() {
+    document.getElementById('displayOwnerPhone').style.display = 'none';
+    document.getElementById('editOwnerPhone').style.display = 'block';
+    document.getElementById('editOwnerPhone').focus();
+}
+
+function editOwnerEmail() {
+    document.getElementById('displayOwnerEmail').style.display = 'none';
+    document.getElementById('editOwnerEmail').style.display = 'block';
+    document.getElementById('editOwnerEmail').focus();
+}
+
+// Save functions
+function saveOwnerName() {
+    const value = document.getElementById('editOwnerName').value.trim();
+    document.getElementById('displayOwnerName').textContent = value || 'Not assigned';
+    document.getElementById('displayOwnerName').style.display = 'block';
+    document.getElementById('editOwnerName').style.display = 'none';
+}
+
+function saveOwnerPhone() {
+    const value = document.getElementById('editOwnerPhone').value.trim();
+    document.getElementById('displayOwnerPhone').textContent = value || 'Not provided';
+    document.getElementById('displayOwnerPhone').style.display = 'block';
+    document.getElementById('editOwnerPhone').style.display = 'none';
+}
+
+function saveOwnerEmail() {
+    const value = document.getElementById('editOwnerEmail').value.trim();
+    document.getElementById('displayOwnerEmail').textContent = value || 'Not provided';
+    document.getElementById('displayOwnerEmail').style.display = 'block';
+    document.getElementById('editOwnerEmail').style.display = 'none';
+}
+
+function saveUnitStatus() {
+    const status = document.getElementById('editUnitStatus').value;
+    document.getElementById('displayUnitStatus').textContent = status.toUpperCase();
+    document.getElementById('displayUnitStatus').className = `unit-status ${status}`;
+}
+
+function handleUnitEnterKey(event, saveFunction) {
+    if (event.key === 'Enter') {
+        saveFunction();
+    }
+}
+
+function saveAllUnitDetails() {
+    if (!currentUnitId) return;
+
+    const unitData = {
+        owner_name: document.getElementById('editOwnerName').value.trim() || null,
+        owner_phone: document.getElementById('editOwnerPhone').value.trim() || null,
+        owner_email: document.getElementById('editOwnerEmail').value.trim() || null,
+        status: document.getElementById('editUnitStatus').value
+    };
+
+    fetch(`/api/unit/${currentUnitId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(unitData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('Unit details updated successfully!', 'Unit Updated');
+            closeUnitDetails();
+            loadUnits(); // Refresh the units display
+        } else {
+            showError(data.message || 'Unknown error', 'Update Failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Network error occurred while updating unit', 'Connection Error');
+    });
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('unitDetailsModal');
+    if (event.target === modal) {
+        closeUnitDetails();
+    }
+});
+
+// Notification Functions
+function showNotification(type, title, message, duration = 5000) {
+    console.log('showNotification called with:', { type, title, message, duration });
+
+    const popup = document.getElementById('notificationPopup');
+    console.log('Popup element found:', popup ? 'Yes' : 'No');
+
+    if (!popup) {
+        console.error('Notification popup element not found!');
+        alert(title + ': ' + message); // Fallback to alert
+        return;
+    }
+
+    const titleElement = document.getElementById('notificationTitle');
+    const messageElement = document.getElementById('notificationMessage');
+    const iconElement = popup.querySelector('.notification-title i');
+
+    console.log('Elements found:', {
+        titleElement: titleElement ? 'Yes' : 'No',
+        messageElement: messageElement ? 'Yes' : 'No',
+        iconElement: iconElement ? 'Yes' : 'No'
+    });
+
+    // Set content
+    if (titleElement) titleElement.textContent = title;
+    if (messageElement) messageElement.textContent = message;
+
+    // Remove existing type classes
+    popup.classList.remove('success', 'error', 'warning', 'info');
+
+    // Add new type class
+    popup.classList.add(type);
+    console.log('Added class:', type);
+
+    // Set appropriate icon
+    if (iconElement) {
+        iconElement.className = 'fas ';
+        switch(type) {
+            case 'success':
+                iconElement.className += 'fa-check-circle';
+                break;
+            case 'error':
+                iconElement.className += 'fa-exclamation-circle';
+                break;
+            case 'warning':
+                iconElement.className += 'fa-exclamation-triangle';
+                break;
+            case 'info':
+                iconElement.className += 'fa-info-circle';
+                break;
+            default:
+                iconElement.className += 'fa-bell';
+        }
+    }
+
+    // Show popup
+    popup.classList.add('show');
+    console.log('Added show class. Popup should be visible now.');
+    console.log('Popup classes:', popup.className);
+
+    // Auto hide after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            closeNotification();
+        }, duration);
+    }
+}
+
+function closeNotification() {
+    const popup = document.getElementById('notificationPopup');
+    popup.classList.remove('show');
+}
+
+function showError(message, title = 'Error') {
+    console.log('showError called with:', { message, title });
+    showNotification('error', title, message);
+}
+
+function showSuccess(message, title = 'Success') {
+    showNotification('success', title, message);
+}
+
+function showWarning(message, title = 'Warning') {
+    showNotification('warning', title, message);
+}
+
+function showInfo(message, title = 'Information') {
+    showNotification('info', title, message);
+}
+
+// Navigate to unit details page
+function goToUnitDetails(unitId) {
+    window.location.href = `/unit/${unitId}`;
+}
+
+// Edit unit function - opens modal
+let currentEditUnitId = null;
+
+function editUnitName(unitId, currentName) {
+    console.log('🔧 Edit unit called:', unitId, currentName);
+    currentEditUnitId = unitId;
+
+    const modal = document.getElementById('editUnitModal');
+    if (!modal) {
+        console.error('❌ Edit modal not found!');
+        showProfessionalPopup('❌ Modal Error', 'Edit modal not found! Please refresh the page.', 'error');
+        return;
+    }
+
+    // Check session first
+    checkSession().then(isLoggedIn => {
+        if (!isLoggedIn) {
+            return; // checkSession already handles the redirect
+        }
+
+        console.log('📡 Fetching unit details...');
+        fetch(`/api/unit/${unitId}`)
+            .then(response => {
+                console.log('📊 Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('📋 Unit details:', data);
+                if (data.success) {
+                    // Fill form fields
+                    document.getElementById('editUnitNumber').value = data.unit.unit_number || '';
+                    document.getElementById('editOwnerName').value = data.unit.owner_name || '';
+                    document.getElementById('editOwnerPhone').value = data.unit.owner_phone || '';
+                    document.getElementById('editOwnerEmail').value = data.unit.owner_email || '';
+
+                    // Force show modal
+                    modal.style.display = 'flex';
+                    modal.style.visibility = 'visible';
+                    modal.style.opacity = '1';
+                    modal.style.zIndex = '9999';
+
+                    console.log('✅ Modal opened successfully');
+                } else {
+                    console.error('❌ API Error:', data.message);
+                    if (data.message && data.message.includes('Unauthorized')) {
+                        showProfessionalPopup('❌ Session Expired', 'Please login again to continue.', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 2000);
+                    } else {
+                        showProfessionalPopup('❌ Load Error', data.message || 'Failed to load unit details', 'error');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('❌ Network Error:', error);
+                if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                    showProfessionalPopup('❌ Session Expired', 'Please login again to continue.', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    showProfessionalPopup('❌ Connection Error', 'Network error: ' + error.message, 'error');
+                }
+            });
+    });
+}
+
+function closeEditUnitModal() {
+    document.getElementById('editUnitModal').style.display = 'none';
+    currentEditUnitId = null;
+}
+
+// Check if user is logged in
+function checkSession() {
+    return fetch('/api/session-check')
+        .then(response => response.json())
+        .then(data => {
+            if (!data.logged_in) {
+                showProfessionalPopup('❌ Session Expired', 'Please login to continue using the application.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return false;
+            }
+            return true;
+        })
+        .catch(error => {
+            console.error('Session check failed:', error);
+            return false;
+        });
+}
+
+// Professional Popup Function
+function showProfessionalPopup(title, message, type) {
+    // Remove existing popup if any
+    const existingPopup = document.querySelector('.popup-overlay');
+    if (existingPopup) {
+        existingPopup.remove();
+    }
+
+    // Create popup HTML
+    const popupHTML = `
+        <div class="popup-overlay" onclick="closeProfessionalPopup()">
+            <div class="popup-container ${type}" onclick="event.stopPropagation()">
+                <div class="popup-header">
+                    <h3 class="popup-title ${type}">${title}</h3>
+                </div>
+                <p class="popup-message">${message}</p>
+                <button class="popup-close" onclick="closeProfessionalPopup()">OK</button>
+            </div>
+        </div>
+    `;
+
+    // Add to body
+    document.body.insertAdjacentHTML('beforeend', popupHTML);
+
+    // Auto close after 5 seconds
+    setTimeout(() => {
+        closeProfessionalPopup();
+    }, 5000);
+}
+
+// Close Professional Popup
+function closeProfessionalPopup() {
+    const popup = document.querySelector('.popup-overlay');
+    if (popup) {
+        popup.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            popup.remove();
+        }, 300);
+    }
+}
+
+function updateUnit(event) {
+    event.preventDefault();
+
+    if (!currentEditUnitId) {
+        showError('No unit selected for editing', 'Edit Error');
+        return;
+    }
+
+    const formData = new FormData(event.target);
+    const unitNumber = formData.get('unitNumber').trim();
+
+    if (!unitNumber) {
+        showProfessionalPopup('❌ Invalid Input', 'Unit number is required', 'error');
+        return;
+    }
+
+    console.log('Updating unit number:', currentEditUnitId, unitNumber);
+
+    // Update only unit number
+    fetch(`/api/unit/${currentEditUnitId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ unit_number: unitNumber })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Unit update response:', data);
+        if (data.success) {
+            showProfessionalPopup('✅ Unit Updated Successfully', 'Unit number has been updated successfully.', 'success');
+            closeEditUnitModal();
+            loadUnits();
+        } else {
+            // Enhanced duplicate detection
+            const errorMsg = data.message || 'Failed to update unit number';
+            if (data.error_type === 'duplicate' ||
+                errorMsg.toLowerCase().includes('already exists') ||
+                errorMsg.toLowerCase().includes('duplicate') ||
+                errorMsg.includes('already exist')) {
+                showProfessionalPopup('⚠️ Unit Already Exists', errorMsg, 'duplicate');
+            } else if (errorMsg.includes('Unauthorized')) {
+                showProfessionalPopup('❌ Session Expired', 'Please login again to continue.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+            } else {
+                showProfessionalPopup('❌ Update Failed', errorMsg, 'error');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showProfessionalPopup('❌ Connection Error', 'Network error occurred while updating unit', 'error');
+    });
+}
+
+// Update unit name via API
+function updateUnitName(unitId, newName) {
+    console.log('Updating unit name:', unitId, newName);
+    fetch(`/api/unit/${unitId}/name`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ unit_number: newName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Update response:', data);
+        if (data.success) {
+            showProfessionalPopup('✅ Unit Name Updated', 'Unit name has been updated successfully.', 'success');
+            loadUnits(); // Refresh the units display
+        } else {
+            // Enhanced duplicate detection for unit name update
+            const errorMsg = data.message || 'Error updating unit name';
+            if (data.error_type === 'duplicate' ||
+                errorMsg.toLowerCase().includes('already exists') ||
+                errorMsg.toLowerCase().includes('duplicate') ||
+                errorMsg.includes('already exist')) {
+                showProfessionalPopup('⚠️ Unit Name Already Exists', errorMsg, 'duplicate');
+            } else {
+                showProfessionalPopup('❌ Update Failed', errorMsg, 'error');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showProfessionalPopup('❌ Connection Error', 'Network error occurred while updating unit name', 'error');
+    });
+}
+</script>
+
+{% endblock %}

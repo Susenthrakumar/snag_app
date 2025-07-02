@@ -1,0 +1,902 @@
+{% extends "base.html" %}
+
+{% block title %}Unit {{ unit.unit_number }} - {{ project.project_name }} - Client Dashboard{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">    
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('client_relations.dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('client_relations.projects') }}">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>My Projects</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-comments"></i>
+                    <span>Messages</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Appointments</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Profile</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">
+                    <a href="{{ url_for('client_relations.dashboard') }}">Dashboard</a>
+                    <span>/</span>
+                    <a href="{{ url_for('client_relations.projects') }}">Projects</a>
+                    <span>/</span>
+                    <a href="{{ url_for('client_relations.project_details', project_id=project.id) }}">{{ project.project_name }}</a>
+                    <span>/</span>
+                    <a href="{{ url_for('client_relations.floor_details', project_id=project.id, floor_id=floor.id) }}">{{ floor.floor_name }}</a>
+                    <span>/</span>
+                    <span>Unit {{ unit.unit_number }}</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session.client_name or 'Client' }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Unit Details Content -->
+        <div class="unit-details-content">
+            <!-- Unit Header -->
+            <div class="unit-header-section">
+                <div class="unit-info">
+                    <div class="unit-title">
+                        <i class="fas fa-home"></i>
+                        <h1>Unit {{ unit.unit_number }} Details</h1>
+                    </div>
+                    <div class="unit-actions">
+                        <button class="btn btn-secondary" onclick="goBack()">
+                            <i class="fas fa-arrow-left"></i>
+                            Back to Floor
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="unit-content-grid">
+                <!-- Unit Information -->
+                <div class="unit-info-card">
+                    <div class="card-header">
+                        <i class="fas fa-info-circle"></i>
+                        <h3>Unit Information</h3>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Unit Number:</label>
+                            <span>{{ unit.unit_number }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Floor:</label>
+                            <span>{{ floor.floor_name }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Project:</label>
+                            <span>{{ project.project_name }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Created Date:</label>
+                            <span>{{ unit.created_at.strftime('%B %d, %Y') if unit.created_at else 'N/A' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Owner Information -->
+                {% if unit.has_owner %}
+                <div class="owner-info-card">
+                    <div class="card-header">
+                        <i class="fas fa-user"></i>
+                        <h3>Owner Information</h3>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Name:</label>
+                            <span>{{ unit.owner_name }}</span>
+                        </div>
+                        {% if unit.owner_phone %}
+                        <div class="info-item">
+                            <label>Phone:</label>
+                            <span><i class="fas fa-phone"></i> {{ unit.country_code }} {{ unit.owner_phone }}</span>
+                        </div>
+                        {% endif %}
+                        {% if unit.owner_email %}
+                        <div class="info-item">
+                            <label>Email:</label>
+                            <span><i class="fas fa-envelope"></i> {{ unit.owner_email }}</span>
+                        </div>
+                        {% endif %}
+                        {% if unit.owner_username %}
+                        <div class="info-item">
+                            <label>Username:</label>
+                            <span><i class="fas fa-user"></i> {{ unit.owner_username }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Invitation Status -->
+                    {% if unit.is_registered %}
+                    <div class="invitation-status">
+                        <div class="status-badge registered">
+                            <i class="fas fa-check-circle"></i>
+                            Registered & Active
+                        </div>
+                        <p class="status-text">Owner has completed registration and can access the system.</p>
+                        <div class="invitation-actions">
+                            <button class="btn btn-danger" onclick="confirmRemoveOwner()">
+                                <i class="fas fa-user-times"></i>
+                                Remove Owner
+                            </button>
+                        </div>
+                    </div>
+                    {% elif unit.invitation_sent %}
+                    <div class="invitation-status">
+                        <div class="status-badge sent">
+                            <i class="fas fa-paper-plane"></i>
+                            Invitation Sent
+                        </div>
+                        <p class="status-text">Registration invitation has been sent to the owner's email address.</p>
+                        <div class="invitation-actions">
+                            <button class="btn btn-secondary" onclick="resendInvitation()">
+                                <i class="fas fa-envelope"></i>
+                                Resend Invitation
+                            </button>
+                            <button class="btn btn-danger" onclick="cancelInvitation()">
+                                <i class="fas fa-times"></i>
+                                Cancel Invitation
+                            </button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="invitation-status">
+                        <div class="status-badge pending">
+                            <i class="fas fa-clock"></i>
+                            Invitation Pending
+                        </div>
+                        <p class="status-text">Registration invitation has not been sent yet.</p>
+                        <div class="invitation-actions">
+                            <button class="btn btn-primary" onclick="sendInvitation()">
+                                <i class="fas fa-paper-plane"></i>
+                                Send Invitation
+                            </button>
+                            <button class="btn btn-danger" onclick="cancelInvitation()">
+                                <i class="fas fa-times"></i>
+                                Cancel Invitation
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="not-assigned-card">
+                    <div class="card-header">
+                        <i class="fas fa-user-slash"></i>
+                        <h3>Unit Status</h3>
+                    </div>
+                    <div class="not-assigned-content">
+                        <div class="status-icon">
+                            <i class="fas fa-home"></i>
+                        </div>
+                        <h4>Not Assigned</h4>
+                        <p>This unit has not been assigned to any owner yet.</p>
+                        <div class="assign-owner-actions">
+                            <button class="btn btn-primary" onclick="showAssignOwnerModal()">
+                                <i class="fas fa-user-plus"></i>
+                                Assign Owner
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Owner Modal -->
+<div id="assignOwnerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-user-plus"></i> Assign Owner to Unit {{ unit.unit_number }}</h2>
+            <span class="close" onclick="closeAssignOwnerModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="assignOwnerForm" onsubmit="assignOwner(event)">
+                <div class="form-group">
+                    <label for="ownerName">Owner Name *</label>
+                    <input type="text" id="ownerName" name="owner_name" required>
+                    <div class="validation-message" id="nameValidation"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ownerEmail">Email Address *</label>
+                    <input type="email" id="ownerEmail" name="owner_email" required>
+                    <div class="validation-message" id="emailValidation"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAssignOwnerModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign Owner</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.unit-details-content {
+    padding: 30px;
+}
+
+.unit-header-section {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.unit-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.unit-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.unit-title i {
+    color: #4299e1;
+    font-size: 24px;
+}
+
+.unit-title h1 {
+    margin: 0;
+    color: #1a202c;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.unit-content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.unit-info-card,
+.owner-info-card,
+.not-assigned-card,
+.quick-actions-card {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid #f1f5f9;
+}
+
+.quick-actions-card {
+    grid-column: span 2;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.card-header i {
+    color: #4299e1;
+    font-size: 18px;
+}
+
+.card-header h3 {
+    margin: 0;
+    color: #1a202c;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.info-grid {
+    display: grid;
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f8fafc;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item label {
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 14px;
+}
+
+.info-item span {
+    color: #1a202c;
+    font-size: 14px;
+}
+
+.not-assigned-content {
+    text-align: center;
+    padding: 20px;
+}
+
+.status-icon {
+    font-size: 48px;
+    color: #cbd5e0;
+    margin-bottom: 15px;
+}
+
+.not-assigned-content h4 {
+    margin: 0 0 10px 0;
+    color: #4a5568;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.not-assigned-content p {
+    margin: 0 0 20px 0;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.assign-owner-actions {
+    margin-top: 20px;
+}
+
+.assign-owner-actions .btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.invitation-status {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.status-badge.sent {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.registered {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-text {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.invitation-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.invitation-actions .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background: #4299e1;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #3182ce;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: #e53e3e;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c53030;
+    transform: translateY(-1px);
+}
+
+.actions-grid {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.report-btn:hover {
+    border-color: #4299e1;
+    background: #f7fafc;
+}
+
+.remove-btn:hover {
+    border-color: #e53e3e;
+    background: #fed7d7;
+}
+
+.action-btn i {
+    font-size: 24px;
+    color: #64748b;
+}
+
+.report-btn:hover i {
+    color: #4299e1;
+}
+
+.remove-btn:hover i {
+    color: #e53e3e;
+}
+
+.action-btn span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #f8fafc;
+    border-radius: 16px 16px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #1a202c;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header i {
+    color: #4299e1;
+}
+
+.close {
+    color: #64748b;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close:hover {
+    color: #e53e3e;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #4299e1;
+}
+
+.validation-message {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #e53e3e;
+    min-height: 16px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 30px;
+}
+
+.form-actions .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .unit-content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .unit-info {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+const UNIT_ID = {{ unit.id }};
+
+function goBack() {
+    window.history.back();
+}
+
+function showAssignOwnerModal() {
+    document.getElementById('assignOwnerModal').style.display = 'block';
+}
+
+function closeAssignOwnerModal() {
+    document.getElementById('assignOwnerModal').style.display = 'none';
+    document.getElementById('assignOwnerForm').reset();
+    clearValidationMessages();
+}
+
+function clearValidationMessages() {
+    document.getElementById('nameValidation').textContent = '';
+    document.getElementById('emailValidation').textContent = '';
+}
+
+function assignOwner(event) {
+    event.preventDefault();
+
+    const formData = {
+        unit_id: UNIT_ID,
+        owner_name: document.getElementById('ownerName').value,
+        owner_email: document.getElementById('ownerEmail').value
+    };
+
+    fetch('/client_relations/api/assign-owner', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Owner assigned successfully!');
+            location.reload();
+        } else {
+            if (data.validation_errors) {
+                // Show validation errors
+                for (const [field, message] of Object.entries(data.validation_errors)) {
+                    const element = document.getElementById(field + 'Validation');
+                    if (element) {
+                        element.textContent = message;
+                    }
+                }
+            } else {
+                alert('Failed to assign owner: ' + (data.error || 'Unknown error'));
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error assigning owner');
+    });
+}
+
+function sendInvitation() {
+    if (confirm('Send invitation email to the unit owner?')) {
+        const unitId = UNIT_ID;
+
+        fetch('/client_relations/api/resend-invitation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ unit_id: unitId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Invitation sent successfully!');
+                location.reload();
+            } else {
+                alert('Failed to send invitation: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error sending invitation');
+        });
+    }
+}
+
+function resendInvitation() {
+    if (confirm('Resend invitation email to the unit owner?')) {
+        const unitId = UNIT_ID;
+
+        fetch('/client_relations/api/resend-invitation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ unit_id: unitId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Invitation resent successfully!');
+                location.reload();
+            } else {
+                alert('Failed to resend invitation: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error resending invitation');
+        });
+    }
+}
+
+function confirmRemoveOwner() {
+    if (confirm('Are you sure you want to remove this unit owner? This action cannot be undone.')) {
+        const unitId = UNIT_ID;
+
+        fetch('/client_relations/api/remove-owner', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ unit_id: unitId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Owner removed successfully!');
+                window.history.back();
+            } else {
+                alert('Failed to remove owner: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error removing owner');
+        });
+    }
+}
+
+function cancelInvitation() {
+    if (confirm('Are you sure you want to cancel this invitation? This will remove the owner assignment from this unit.')) {
+        const unitId = UNIT_ID;
+
+        fetch('/client_relations/api/remove-owner', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ unit_id: unitId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Invitation cancelled and owner removed successfully!');
+                location.reload();
+            } else {
+                alert('Failed to cancel invitation: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error cancelling invitation');
+        });
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('assignOwnerModal');
+    if (event.target === modal) {
+        closeAssignOwnerModal();
+    }
+}
+</script>
+{% endblock %}

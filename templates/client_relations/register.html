@@ -1,0 +1,645 @@
+{% extends "base.html" %}
+
+{% block title %}Client Registration - Snag Management System{% endblock %}
+
+{% block body %}
+<div class="register-container">
+    <div class="register-left">
+        <div class="register-image">
+            <div class="overlay">
+                <div class="welcome-content">
+                    <h1>Welcome to SNAG Management</h1>
+                    <p>Join our comprehensive project management platform and stay connected with your projects.</p>
+                    <div class="features">
+                        <div class="feature">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Real-time project updates</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Direct communication with teams</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Access to reports and documents</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="register-right">
+        <div class="register-form-container">
+            <div class="register-header">
+                <h2>Complete Your Registration</h2>
+                <p>Please fill in your details to activate your client account</p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="register-form" id="registrationForm">
+                <input type="hidden" name="email" value="{{ email }}">
+                <input type="hidden" name="token" value="{{ token }}">
+                
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                    <div id="usernameValidation" class="validation-feedback"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email_display">Email Address</label>
+                    <input type="email" id="email_display" value="{{ email }}" disabled>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <div class="phone-input-group">
+                        <select name="country_code" id="country_code">
+                            <option value="+91">+91 (India)</option>
+                            <option value="+1">+1 (USA)</option>
+                            <option value="+44">+44 (UK)</option>
+                            <option value="+61">+61 (Australia)</option>
+                            <option value="+971">+971 (UAE)</option>
+                        </select>
+                        <input type="tel" id="phone" name="phone" required>
+                    </div>
+                    <div id="phoneValidation" class="validation-feedback"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="company_name">Company Name (Optional)</label>
+                    <input type="text" id="company_name" name="company_name">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="password-input-group">
+                        <input type="password" id="password" name="password" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <i class="fas fa-eye" id="passwordIcon"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">Confirm Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required>
+                    <div id="confirmPasswordValidation" class="validation-feedback"></div>
+                </div>
+
+                <button type="submit" class="register-btn" id="registerBtn">
+                    <i class="fas fa-user-plus"></i>
+                    Complete Registration
+                </button>
+            </form>
+
+            <div class="register-footer">
+                <p>Already have an account? <a href="{{ url_for('login') }}">Sign in here</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Registration Page Styles */
+.register-container {
+    display: flex;
+    min-height: 100vh;
+    background: #f8fafc;
+}
+
+.register-left {
+    flex: 1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.register-image {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.welcome-content {
+    text-align: center;
+    color: white;
+    max-width: 500px;
+}
+
+.welcome-content h1 {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.welcome-content p {
+    font-size: 18px;
+    margin-bottom: 40px;
+    opacity: 0.9;
+    line-height: 1.6;
+}
+
+.features {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.feature i {
+    color: #48bb78;
+    font-size: 18px;
+}
+
+.register-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background: white;
+}
+
+.register-form-container {
+    width: 100%;
+    max-width: 500px;
+}
+
+.register-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.register-header h2 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 10px;
+}
+
+.register-header p {
+    color: #718096;
+    font-size: 16px;
+}
+
+.register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 50px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group input:disabled {
+    background: #f7fafc;
+    color: #a0aec0;
+}
+
+.phone-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.phone-input-group select {
+    flex: 0 0 140px;
+}
+
+.phone-input-group input {
+    flex: 1;
+}
+
+.password-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-group input {
+    flex: 1;
+    padding-right: 50px;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #a0aec0;
+    cursor: pointer;
+    font-size: 16px;
+    transition: color 0.3s ease;
+}
+
+.password-toggle:hover {
+    color: #667eea;
+}
+
+.password-strength {
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.validation-feedback {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.validation-feedback.success {
+    background: #c6f6d5;
+    color: #2f855a;
+    border: 1px solid #9ae6b4;
+}
+
+.validation-feedback.error {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+.validation-feedback.info {
+    background: #bee3f8;
+    color: #2b6cb0;
+    border: 1px solid #90cdf4;
+}
+
+.register-btn {
+    padding: 15px 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.register-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.register-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.register-footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.register-footer p {
+    color: #718096;
+    font-size: 14px;
+}
+
+.register-footer a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.register-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 20px;
+}
+
+.flash-message {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.flash-success {
+    background: #c6f6d5;
+    color: #2f855a;
+    border: 1px solid #9ae6b4;
+}
+
+.flash-error {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+.flash-info {
+    background: #bee3f8;
+    color: #2b6cb0;
+    border: 1px solid #90cdf4;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .register-container {
+        flex-direction: column;
+    }
+
+    .register-left {
+        min-height: 300px;
+    }
+
+    .welcome-content h1 {
+        font-size: 36px;
+    }
+
+    .register-right {
+        padding: 20px;
+    }
+
+    .phone-input-group {
+        flex-direction: column;
+    }
+
+    .phone-input-group select {
+        flex: none;
+    }
+}
+</style>
+
+<script>
+// Real-time validation
+document.addEventListener('DOMContentLoaded', function() {
+    const usernameInput = document.getElementById('username');
+    const phoneInput = document.getElementById('phone');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+
+    // Username validation
+    let usernameTimeout;
+    usernameInput.addEventListener('input', function() {
+        const username = this.value.trim();
+        const feedback = document.getElementById('usernameValidation');
+
+        clearTimeout(usernameTimeout);
+
+        if (!username) {
+            feedback.textContent = '';
+            feedback.className = 'validation-feedback';
+            return;
+        }
+
+        if (username.length < 3) {
+            showValidation('usernameValidation', 'error', 'Username must be at least 3 characters');
+            return;
+        }
+
+        if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+            showValidation('usernameValidation', 'error', 'Username can only contain letters, numbers, underscores, and hyphens');
+            return;
+        }
+
+        usernameTimeout = setTimeout(() => {
+            showValidation('usernameValidation', 'info', 'Checking availability...');
+
+            fetch('/client_relations/api/validate-username', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: username })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.available) {
+                    showValidation('usernameValidation', 'success', 'Username is available');
+                } else {
+                    showValidation('usernameValidation', 'error', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error validating username:', error);
+                showValidation('usernameValidation', 'error', 'Error checking availability');
+            });
+        }, 500);
+    });
+
+    // Phone validation
+    let phoneTimeout;
+    phoneInput.addEventListener('input', function() {
+        const phone = this.value.trim();
+        const countryCode = document.getElementById('country_code').value;
+        const fullPhone = countryCode + phone;
+        const feedback = document.getElementById('phoneValidation');
+
+        clearTimeout(phoneTimeout);
+
+        if (!phone) {
+            feedback.textContent = '';
+            feedback.className = 'validation-feedback';
+            return;
+        }
+
+        if (!/^\d{10,14}$/.test(phone)) {
+            showValidation('phoneValidation', 'error', 'Phone number must be 10-14 digits');
+            return;
+        }
+
+        phoneTimeout = setTimeout(() => {
+            showValidation('phoneValidation', 'info', 'Checking availability...');
+
+            fetch('/client_relations/api/validate-phone', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ phone: fullPhone })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.available) {
+                    showValidation('phoneValidation', 'success', 'Phone number is available');
+                } else {
+                    showValidation('phoneValidation', 'error', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error validating phone:', error);
+                showValidation('phoneValidation', 'error', 'Error checking availability');
+            });
+        }, 500);
+    });
+
+    // Password strength validation
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        const strength = document.getElementById('passwordStrength');
+
+        if (!password) {
+            strength.textContent = '';
+            return;
+        }
+
+        const score = calculatePasswordStrength(password);
+
+        if (score < 2) {
+            strength.textContent = 'Weak password';
+            strength.style.color = '#e53e3e';
+        } else if (score < 4) {
+            strength.textContent = 'Medium password';
+            strength.style.color = '#d69e2e';
+        } else {
+            strength.textContent = 'Strong password';
+            strength.style.color = '#38a169';
+        }
+    });
+
+    // Confirm password validation
+    confirmPasswordInput.addEventListener('input', function() {
+        const password = passwordInput.value;
+        const confirmPassword = this.value;
+        const feedback = document.getElementById('confirmPasswordValidation');
+
+        if (!confirmPassword) {
+            feedback.textContent = '';
+            feedback.className = 'validation-feedback';
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showValidation('confirmPasswordValidation', 'error', 'Passwords do not match');
+        } else {
+            showValidation('confirmPasswordValidation', 'success', 'Passwords match');
+        }
+    });
+
+    // Form submission
+    document.getElementById('registrationForm').addEventListener('submit', function(e) {
+        const registerBtn = document.getElementById('registerBtn');
+
+        // Show loading state
+        registerBtn.disabled = true;
+        registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
+
+        // Form will submit normally, loading state will be reset on page reload
+    });
+});
+
+function showValidation(elementId, type, message) {
+    const element = document.getElementById(elementId);
+    element.textContent = message;
+    element.className = `validation-feedback ${type}`;
+}
+
+function calculatePasswordStrength(password) {
+    let score = 0;
+
+    // Length
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+
+    // Character types
+    if (/[a-z]/.test(password)) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    return score;
+}
+
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const passwordIcon = document.getElementById('passwordIcon');
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        passwordIcon.className = 'fas fa-eye-slash';
+    } else {
+        passwordInput.type = 'password';
+        passwordIcon.className = 'fas fa-eye';
+    }
+}
+</script>
+{% endblock %}

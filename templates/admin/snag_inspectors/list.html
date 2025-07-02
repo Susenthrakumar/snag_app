@@ -1,0 +1,1793 @@
+{% extends "base.html" %}
+
+{% block title %}SNAG Inspectors - Snag Management System{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('projects') }}">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Projects</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('contractors.contractors_list') }}">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Contractors</span>
+                </a>
+            </li>
+            <li class="active">
+                <a href="{{ url_for('snag_inspectors.inspectors_list') }}">
+                    <i class="fas fa-user-secret"></i>
+                    <span>SNAG Inspectors</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('client_relations.clients_list') }}">
+                    <i class="fas fa-handshake"></i>
+                    <span>Client Relations</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('appointments.appointments') }}">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Appointments</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>SNAG Inspectors</h1>
+            </div>
+            
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>Administrator</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Contractors Content -->
+        <div class="contractors-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Contractors Header -->
+            <div class="contractors-header">
+                <div class="filters-section">
+                    <div class="filter-group category-filter">
+                        <label>Category:</label>
+                        <select id="categoryFilter">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group status-filter">
+                        <label>Status:</label>
+                        <select id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="resend">Resend</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="action-section">
+                    <div class="search-group">
+                        <input type="text" id="searchInspectors" placeholder="Search inspectors...">
+                        <i class="fas fa-search"></i>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="showSendInvitationModal()">
+                        <i class="fas fa-envelope"></i> Send Invitation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Inspectors List -->
+            <div class="contractors-list">
+                {% if inspectors %}
+                    <div class="contractors-grid">
+                        {% for inspector in inspectors %}
+                        <div class="contractor-card">
+                            <div class="contractor-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="contractor-info">
+                                <h3>{{ inspector.name or 'Pending Registration' }}</h3>
+                                <p class="contractor-email">{{ inspector.email }}</p>
+                                {% if inspector.username %}
+                                <p class="contractor-username">@{{ inspector.username }}</p>
+                                {% endif %}
+                                {% if inspector.company_name %}
+                                <p class="contractor-company">{{ inspector.company_name }}</p>
+                                {% endif %}
+                                {% if inspector.phone %}
+                                <p class="contractor-phone">
+                                    <i class="fas fa-phone"></i>
+                                    {{ inspector.country_code or '+91' }}{{ inspector.phone }}
+                                </p>
+                                {% endif %}
+                                <span class="status-badge status-{{ inspector.status }}">
+                                    {{ inspector.status.title() }}
+                                </span>
+                                {% if inspector.invitation_sent_at %}
+                                <p class="invitation-date">Invited: {{ inspector.invitation_sent_at.strftime('%Y-%m-%d') }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="contractor-actions">
+                                <button class="btn-icon" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                {% if inspector.status in ['pending', 'resend'] %}
+                                <button class="btn-icon" title="Resend Invitation" onclick="resendInvitation('{{ inspector.email }}')">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn-icon" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3>No Inspectors Yet</h3>
+                        <p>Add SNAG inspectors to manage quality assurance.</p>
+                        <button class="btn btn-primary" onclick="showSendInvitationModal()">
+                            <i class="fas fa-plus"></i> Send First Invitation
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Invitation Modal -->
+<div id="sendInvitationModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Send Inspector Invitations</h2>
+            <span class="close" onclick="closeSendInvitationModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="invitation-form">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <div class="email-input-group">
+                        <input type="email" id="inspectorEmail" placeholder="Enter inspector email...">
+                        <button type="button" class="btn-add-email" onclick="addEmail()" id="addEmailBtn">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="emailValidationMessage" class="validation-message"></div>
+                </div>
+                
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label>Email List (<span id="emailCount">0</span> emails)</label>
+                        <button type="button" class="btn-clear-emails" onclick="clearAllEmails()" id="clearEmailsBtn" style="display: none;">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                    </div>
+                    <div id="emailList" class="email-list">
+                        <p class="no-emails">No emails added yet. Add emails above.</p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Upload CSV File</label>
+                    <div class="file-upload-area" onclick="document.getElementById('csvFile').click()">
+                        <i class="fas fa-upload"></i>
+                        <p>Click to upload CSV file with email addresses</p>
+                        <input type="file" id="csvFile" accept=".csv" style="display: none;" onchange="handleFileUpload(this)">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSendInvitationModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="sendInvitations()">
+                <i class="fas fa-envelope"></i> Send Invitations
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Contractors specific styles */
+.contractors-content {
+    padding: 20px;
+}
+
+.contractors-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 25px 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.filters-section {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.action-section {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0px;
+}
+
+.filter-group label {
+    font-size: 14px;
+    color: #4f46e5;
+    font-weight: 600;
+    margin-bottom: 0;
+    white-space: nowrap;
+    width: 80px;
+    text-align: left;
+}
+
+.filter-group select {
+    padding: 10px 16px;
+    border: 1px solid #4f46e5;
+    border-radius: 50px;
+    font-size: 14px;
+    background: white;
+    height: 42px;
+    width: 160px;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+/* Filter Focus Styles */
+.filter-group select:focus {
+    border-color: #3730a3;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    outline: none;
+}
+
+/* Status Filter Specific Styles */
+.status-filter {
+    gap: 2px;
+}
+
+.status-filter label {
+    width: 60px;
+}
+
+.search-group {
+    position: relative;
+}
+
+.search-group input {
+    padding: 10px 40px 10px 20px;
+    border: 1px solid #4f46e5;
+    border-radius: 50px;
+    width: 280px;
+    font-size: 14px;
+    height: 42px;
+    box-sizing: border-box;
+}
+
+.search-group i {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #4f46e5;
+}
+
+.btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    height: 38px;
+    box-sizing: border-box;
+    font-size: 13px;
+}
+
+.btn-primary {
+    background: #4f46e5;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #4338ca;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .contractors-header {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .filters-section {
+        flex-direction: column;
+        gap: 15px;
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .filter-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .filter-group label {
+        width: auto;
+        min-width: 80px;
+    }
+
+    .filter-group select {
+        flex: 1;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .action-section {
+        flex-direction: column;
+        gap: 15px;
+        width: 100%;
+    }
+
+    .search-group {
+        width: 100%;
+    }
+
+    .search-group input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .contractors-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .contractor-card {
+        padding: 15px;
+    }
+
+    .contractor-info h3 {
+        font-size: 16px;
+    }
+
+    .contractor-actions {
+        gap: 8px;
+    }
+
+    .btn-icon {
+        padding: 8px;
+        min-width: 36px;
+        height: 36px;
+    }
+}
+
+/* Tablet Responsive Styles */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .contractors-header {
+        padding: 20px 25px;
+    }
+
+    .filters-section {
+        gap: 25px;
+    }
+
+    .filter-group select {
+        min-width: 120px;
+        max-width: 150px;
+    }
+
+    .search-group input {
+        width: 220px;
+    }
+
+    .contractors-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.contractors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.contractor-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.contractor-avatar {
+    width: 50px;
+    height: 50px;
+    background: #f3f4f6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.contractor-info {
+    flex: 1;
+}
+
+.contractor-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+    color: #1f2937;
+}
+
+.contractor-email {
+    margin: 0 0 5px 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.contractor-username {
+    margin: 0 0 5px 0;
+    color: #4f46e5;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.contractor-company {
+    margin: 0 0 5px 0;
+    color: #4b5563;
+    font-size: 13px;
+}
+
+.contractor-category {
+    margin: 0 0 10px 0;
+    color: #7c3aed;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.invitation-date {
+    margin: 5px 0 0 0;
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-resend {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.contractor-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+}
+
+.btn-icon:hover {
+    background: #e5e7eb;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    background: #f3f4f6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 32px;
+    color: #9ca3af;
+}
+
+.empty-state h3 {
+    margin: 0 0 10px 0;
+    color: #1f2937;
+}
+
+.empty-state p {
+    margin: 0 0 20px 0;
+    color: #6b7280;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 8% auto;
+    border-radius: 8px;
+    width: 70%;
+    max-width: 450px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+}
+
+.modal-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.close {
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.close:hover {
+    color: #374151;
+}
+
+.modal-body {
+    padding: 20px 22px;
+}
+
+.modal-footer {
+    padding: 15px 22px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 13px;
+}
+
+.email-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.email-input-group input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 25px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.email-input-group input:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.btn-add-email {
+    padding: 10px 14px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    font-size: 14px;
+}
+
+.btn-add-email:hover:not(:disabled) {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.btn-add-email:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-clear-emails {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-clear-emails:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.validation-message {
+    margin-top: 6px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    min-height: 18px;
+    transition: all 0.2s ease;
+}
+
+.validation-message.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.validation-message.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.validation-message.info {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.validation-message:empty {
+    display: none;
+}
+
+.email-list {
+    min-height: 100px;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+    background: #f8fafc;
+    margin-bottom: 10px;
+}
+
+.no-emails {
+    color: #6b7280;
+    font-style: italic;
+    margin: 0;
+    text-align: center;
+    padding: 30px 20px;
+    font-size: 14px;
+}
+
+.email-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.email-item:hover {
+    border-color: #4f46e5;
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.1);
+}
+
+.email-item:last-child {
+    margin-bottom: 0;
+}
+
+.email-item span {
+    color: #374151;
+    font-size: 14px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.remove-email {
+    background: #fee2e2;
+    color: #dc2626;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    margin-left: 10px;
+}
+
+.remove-email:hover {
+    background: #fecaca;
+    transform: scale(1.1);
+}
+
+.email-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #dbeafe;
+    color: #1e40af;
+    padding: 5px 10px;
+    border-radius: 20px;
+    margin: 2px;
+    font-size: 14px;
+}
+
+.email-tag .remove-email {
+    cursor: pointer;
+    color: #dc2626;
+    font-weight: bold;
+}
+
+.file-upload-area {
+    border: 2px dashed #d1d5db;
+    border-radius: 6px;
+    padding: 25px 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-upload-area:hover {
+    border-color: #4f46e5;
+    background: #f8fafc;
+}
+
+.file-upload-area i {
+    font-size: 24px;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.file-upload-area p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.flash-messages {
+    margin-bottom: 20px;
+}
+
+.flash-message {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.flash-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.flash-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* Notification system */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    padding: 15px 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10000;
+    min-width: 300px;
+    animation: slideIn 0.3s ease;
+}
+
+.notification-success {
+    border-left: 4px solid #10b981;
+    color: #065f46;
+}
+
+.notification-error {
+    border-left: 4px solid #ef4444;
+    color: #991b1b;
+}
+
+.notification-info {
+    border-left: 4px solid #3b82f6;
+    color: #1e40af;
+}
+
+.notification i {
+    font-size: 1.2rem;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    margin-left: auto;
+}
+
+.notification-close:hover {
+    color: #374151;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ===== RESPONSIVE MEDIA QUERIES ===== */
+
+/* Large Desktop Screens (1200px and up) */
+@media screen and (min-width: 1200px) {
+    .contractors-content {
+        padding: 30px 40px;
+    }
+    
+    .contractors-grid {
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 25px;
+    }
+    
+    .filters-section {
+        gap: 50px;
+    }
+}
+
+/* Desktop/Laptop Screens (992px to 1199px) */
+@media screen and (max-width: 1199px) and (min-width: 992px) {
+    .contractors-grid {
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    }
+    
+    .filters-section {
+        gap: 30px;
+    }
+    
+    .search-group input {
+        width: 250px;
+    }
+}
+
+/* Tablet Landscape (768px to 991px) */
+@media screen and (max-width: 991px) and (min-width: 768px) {
+    .contractors-header {
+        flex-direction: column;
+        gap: 20px;
+        align-items: stretch;
+        padding: 20px 25px;
+    }
+    
+    .filters-section {
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: space-between;
+    }
+    
+    .action-section {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .filter-group {
+        min-width: 200px;
+        flex: 1;
+    }
+    
+    .search-group input {
+        width: 220px;
+    }
+    
+    .contractors-grid {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 18px;
+    }
+    
+    .contractor-card {
+        padding: 18px;
+    }
+    
+    .contractors-content {
+        padding: 18px;
+    }
+}
+
+/* Tablet Portrait (576px to 767px) */
+@media screen and (max-width: 767px) and (min-width: 576px) {
+    .contractors-header {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+    }
+    
+    .filters-section {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    
+    .action-section {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+        min-width: auto;
+        gap: 8px;
+    }
+    
+    .filter-group label {
+        min-width: auto;
+        text-align: left;
+        font-size: 13px;
+    }
+    
+    .filter-group select {
+        min-width: auto;
+        max-width: none;
+        width: 100%;
+    }
+    
+    .search-group input {
+        width: 100%;
+    }
+    
+    .btn {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .contractors-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .contractor-card {
+        padding: 16px;
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+    
+    .contractor-avatar {
+        align-self: center;
+    }
+    
+    .contractor-actions {
+        flex-direction: row;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .contractors-content {
+        padding: 15px;
+    }
+    
+    .empty-state {
+        padding: 40px 15px;
+    }
+    
+    .empty-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+    }
+}
+
+/* Mobile Landscape (480px to 575px) */
+@media screen and (max-width: 575px) and (min-width: 480px) {
+    .contractors-header {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .contractors-content {
+        padding: 12px;
+    }
+    
+    .contractor-card {
+        padding: 14px;
+        gap: 10px;
+    }
+    
+    .contractor-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+    
+    .contractor-info h3 {
+        font-size: 15px;
+    }
+    
+    .contractor-email {
+        font-size: 13px;
+    }
+    
+    .btn-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .notification {
+        min-width: 250px;
+        padding: 12px 16px;
+    }
+}
+
+/* Mobile Portrait (320px to 479px) */
+@media screen and (max-width: 479px) {
+    .contractors-content {
+        padding: 10px;
+    }
+    
+    .contractors-header {
+        padding: 12px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+    }
+    
+    .contractor-card {
+        padding: 12px;
+        border-radius: 8px;
+        gap: 8px;
+    }
+    
+    .contractor-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .contractor-info h3 {
+        font-size: 14px;
+    }
+    
+    .contractor-email,
+    .contractor-username,
+    .contractor-company {
+        font-size: 12px;
+    }
+    
+    .contractor-category {
+        font-size: 11px;
+    }
+    
+    .invitation-date {
+        font-size: 11px;
+    }
+    
+    .status-badge {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        height: 38px;
+        font-size: 13px;
+    }
+    
+    .btn-icon {
+        width: 26px;
+        height: 26px;
+    }
+    
+    .filter-group select,
+    .search-group input {
+        height: 38px;
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+    
+    .search-group input {
+        padding-right: 35px;
+    }
+    
+    .empty-state {
+        padding: 30px 12px;
+    }
+    
+    .empty-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .empty-state h3 {
+        font-size: 16px;
+    }
+    
+    .empty-state p {
+        font-size: 14px;
+    }
+    
+    /* Modal responsive adjustments */
+    .modal-content {
+        width: 85%;
+        margin: 15% auto;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 15px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .email-input-group {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .file-upload-area {
+        padding: 25px 15px;
+    }
+    
+    .file-upload-area i {
+        font-size: 24px;
+    }
+    
+    /* Notification adjustments */
+    .notification {
+        left: 10px;
+        right: 10px;
+        top: 10px;
+        min-width: auto;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+}
+
+/* Very Small Mobile Screens (below 320px) */
+@media screen and (max-width: 319px) {
+    .contractors-content {
+        padding: 8px;
+    }
+    
+    .contractors-header {
+        padding: 10px;
+    }
+    
+    .contractor-card {
+        padding: 10px;
+    }
+    
+    .contractor-avatar {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+    }
+    
+    .btn {
+        padding: 6px 12px;
+        height: 36px;
+        font-size: 12px;
+    }
+    
+    .filter-group select,
+    .search-group input {
+        height: 36px;
+        font-size: 12px;
+    }
+    
+    .modal-content {
+        width: 98%;
+    }
+    
+    .notification {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+}
+
+/* Landscape orientation adjustments for mobile */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .contractors-header {
+        margin-bottom: 15px;
+    }
+    
+    .contractor-card {
+        flex-direction: row;
+        text-align: left;
+    }
+    
+    .empty-state {
+        padding: 25px 15px;
+    }
+    
+    .modal-content {
+        margin: 2% auto;
+        max-height: 95vh;
+        overflow-y: auto;
+    }
+}
+</style>
+
+<script>
+// Email list for invitations
+let emailList = [];
+
+function showSendInvitationModal() {
+    document.getElementById('sendInvitationModal').style.display = 'block';
+}
+
+function closeSendInvitationModal() {
+    document.getElementById('sendInvitationModal').style.display = 'none';
+    emailList = [];
+    updateEmailList();
+    document.getElementById('inspectorEmail').value = '';
+    document.getElementById('csvFile').value = '';
+}
+
+function addEmail() {
+    const emailInput = document.getElementById('inspectorEmail');
+    const addBtn = document.getElementById('addEmailBtn');
+    const validationMsg = document.getElementById('emailValidationMessage');
+    const email = emailInput.value.trim();
+
+    // Clear previous validation message
+    validationMsg.textContent = '';
+    validationMsg.className = 'validation-message';
+
+    if (!email) {
+        showValidationMessage('error', 'Please enter an email address');
+        return;
+    }
+
+    if (!isValidEmail(email)) {
+        showValidationMessage('error', 'Please enter a valid email address');
+        return;
+    }
+
+    if (emailList.includes(email)) {
+        showValidationMessage('error', 'Email already added to the list');
+        return;
+    }
+
+    // Show loading state
+    addBtn.disabled = true;
+    addBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    showValidationMessage('info', 'Validating email...');
+
+    // Validate email availability
+    fetch('/snag-inspectors/api/validate-email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Restore button
+        addBtn.disabled = false;
+        addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+
+        if (data.available) {
+            emailList.push(email);
+            updateEmailList();
+            emailInput.value = '';
+
+            if (data.message && data.message.includes('update existing')) {
+                showValidationMessage('info', `${email} - ${data.message}`);
+                showNotification('info', `${email} will update existing SNAG inspector invitation`);
+            } else {
+                showValidationMessage('success', `${email} added successfully`);
+            }
+
+            // Clear validation message after 3 seconds
+            setTimeout(() => {
+                validationMsg.textContent = '';
+                validationMsg.className = 'validation-message';
+            }, 3000);
+        } else {
+            showValidationMessage('error', `Cannot add ${email}: ${data.message}`);
+        }
+    })
+    .catch(error => {
+        // Restore button
+        addBtn.disabled = false;
+        addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+
+        console.error('Error validating email:', error);
+        showValidationMessage('error', 'Error validating email. Please try again.');
+    });
+}
+
+function showValidationMessage(type, message) {
+    const validationMsg = document.getElementById('emailValidationMessage');
+    validationMsg.textContent = message;
+    validationMsg.className = `validation-message ${type}`;
+}
+
+function removeEmail(email) {
+    emailList = emailList.filter(e => e !== email);
+    updateEmailList();
+}
+
+function updateEmailList() {
+    const container = document.getElementById('emailList');
+    const countElement = document.getElementById('emailCount');
+
+    // Update count
+    countElement.textContent = emailList.length;
+
+    if (emailList.length === 0) {
+        container.innerHTML = '<p class="no-emails">No emails added yet. Add emails above.</p>';
+        return;
+    }
+
+    container.innerHTML = emailList.map((email, index) => `
+        <div class="email-item" style="animation: slideIn 0.3s ease ${index * 0.1}s both;">
+            <span>${email}</span>
+            <button onclick="removeEmail('${email}')" class="remove-email" title="Remove ${email}">×</button>
+        </div>
+    `).join('');
+}
+
+// Add CSS animation for email items
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+`;
+document.head.appendChild(style);
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function handleFileUpload() {
+    const fileInput = document.getElementById('csvFile');
+    const file = fileInput.files[0];
+
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/snag-inspectors/api/upload-csv', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add emails to list, avoiding duplicates
+            data.emails.forEach(email => {
+                if (!emailList.includes(email)) {
+                    emailList.push(email);
+                }
+            });
+            updateEmailList();
+
+            // Clear file input
+            fileInput.value = '';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error uploading file');
+    });
+}
+
+function sendInvitations() {
+    if (emailList.length === 0) {
+        alert('Please add at least one email address');
+        return;
+    }
+
+    // Show loading state
+    const sendBtn = document.querySelector('.modal-footer .btn-primary');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    sendBtn.disabled = true;
+
+    fetch('/snag-inspectors/api/send-invitations', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            emails: emailList
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Restore button
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+
+        if (data.success) {
+            closeSendInvitationModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        // Restore button
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+
+        console.error('Error:', error);
+        alert('Error sending invitations');
+    });
+}
+
+function resendInvitation(email) {
+    if (confirm(`Resend invitation to ${email}?`)) {
+        // Find the resend button and show loading state
+        const resendBtn = event.target.closest('.btn-icon');
+        const originalIcon = resendBtn.innerHTML;
+        resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        resendBtn.disabled = true;
+
+        fetch('/snag-inspectors/api/send-invitations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                emails: [email]
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Restore button
+            resendBtn.innerHTML = originalIcon;
+            resendBtn.disabled = false;
+
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            // Restore button
+            resendBtn.innerHTML = originalIcon;
+            resendBtn.disabled = false;
+
+            console.error('Error:', error);
+            alert('Error resending invitation');
+        });
+    }
+}
+
+// Search and filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const emailInput = document.getElementById('inspectorEmail');
+    if (emailInput) {
+        emailInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addEmail();
+            }
+        });
+
+        // Real-time email validation
+        let emailValidationTimeout;
+        emailInput.addEventListener('input', function() {
+            const email = this.value.trim();
+            const validationMsg = document.getElementById('emailValidationMessage');
+
+            // Clear previous timeout
+            clearTimeout(emailValidationTimeout);
+
+            if (!email) {
+                validationMsg.textContent = '';
+                validationMsg.className = 'validation-message';
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                showValidationMessage('error', 'Invalid email format');
+                return;
+            }
+
+            if (emailList.includes(email)) {
+                showValidationMessage('error', 'Email already in the list');
+                return;
+            }
+
+            // Validate after 500ms delay
+            emailValidationTimeout = setTimeout(() => {
+                showValidationMessage('info', 'Checking availability...');
+
+                fetch('/snag-inspectors/api/validate-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: email })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.available) {
+                        if (data.message && data.message.includes('update existing')) {
+                            showValidationMessage('info', 'Will update existing SNAG inspector');
+                        } else {
+                            showValidationMessage('success', 'Email available');
+                        }
+                    } else {
+                        showValidationMessage('error', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error validating email:', error);
+                    showValidationMessage('error', 'Error checking availability');
+                });
+            }, 500);
+        });
+    }
+
+    // Search functionality
+    const searchInput = document.getElementById('searchInspectors');
+    const statusFilter = document.getElementById('statusFilter');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', filterInspectors);
+    }
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterInspectors);
+    }
+});
+
+function filterInspectors() {
+    const searchTerm = document.getElementById('searchInspectors').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+
+    const inspectorCards = document.querySelectorAll('.contractor-card');
+
+    inspectorCards.forEach(card => {
+        const name = card.querySelector('.contractor-info h3').textContent.toLowerCase();
+        const email = card.querySelector('.contractor-email').textContent.toLowerCase();
+        const username = card.querySelector('.contractor-username');
+        const usernameText = username ? username.textContent.toLowerCase() : '';
+        const company = card.querySelector('.contractor-company');
+        const companyText = company ? company.textContent.toLowerCase() : '';
+        const status = card.querySelector('.status-badge').textContent.toLowerCase();
+
+        // Search filter
+        const matchesSearch = !searchTerm ||
+            name.includes(searchTerm) ||
+            email.includes(searchTerm) ||
+            usernameText.includes(searchTerm) ||
+            companyText.includes(searchTerm);
+
+        // Status filter
+        const matchesStatus = !statusFilter || status.includes(statusFilter);
+
+        // Show/hide card
+        if (matchesSearch && matchesStatus) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Notification system
+function showNotification(type, message) {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <span>${message}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+    </script>
+{% endblock %}

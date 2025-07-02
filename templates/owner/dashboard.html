@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Owner Dashboard - SNAG Management System{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+            </div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="active">
+                <a href="{{ url_for('owner.dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('owner.appointments') }}">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Book Appointment</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Snag Progress</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Snag Reports</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>Unit Owner Dashboard</h1>
+            </div>
+
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge">0</span>
+                </div>
+
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session.owner_name }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                            <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </main>
+    </div>
+</div>
+
+<script>
+function showPaymentVerification() {
+    document.getElementById('paymentModal').style.display = 'block';
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('paymentModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Handle form submission
+document.getElementById('paymentVerificationForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData();
+    const paymentProof = document.getElementById('paymentProof').files[0];
+    const idProof = document.getElementById('idProof').files[0];
+
+    if (!paymentProof || !idProof) {
+        alert('Please select both payment proof and ID proof files.');
+        return;
+    }
+
+    // Convert files to base64 for database storage
+    const reader1 = new FileReader();
+    const reader2 = new FileReader();
+
+    reader1.onload = function(e) {
+        const paymentProofData = e.target.result;
+
+        reader2.onload = function(e) {
+            const idProofData = e.target.result;
+
+            // Submit to server
+            fetch('/owner/api/upload-verification-documents', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    payment_proof: paymentProofData,
+                    payment_proof_name: paymentProof.name,
+                    id_proof: idProofData,
+                    id_proof_name: idProof.name
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Documents uploaded successfully! Your verification is now pending approval.');
+                    location.reload();
+                } else {
+                    alert('Error uploading documents: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error uploading documents');
+            });
+        };
+
+        reader2.readAsDataURL(idProof);
+    };
+
+    reader1.readAsDataURL(paymentProof);
+});
+
+// Show payment verification popup on login if not verified
+{% if unit.payment_verification_status == 'pending' %}
+    // Auto-show modal for pending verification
+    setTimeout(function() {
+        showPaymentVerification();
+    }, 1000);
+{% endif %}
+</script>
+
+{% endblock %}

@@ -1,0 +1,524 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.project_name }} - Project Details{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="active">
+                <a href="{{ url_for('projects') }}">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Projects</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('contractors.contractors_list') }}">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Contractors</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('snag_inspectors.inspectors_list') }}">
+                    <i class="fas fa-user-secret"></i>
+                    <span>SNAG Inspectors</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('client_relations.clients_list') }}">
+                    <i class="fas fa-handshake"></i>
+                    <span>Client Relations</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('appointments.appointments') }}">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Appointments</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">
+                    <a href="{{ url_for('projects') }}">Projects</a>
+                    <i class="fas fa-chevron-right"></i>
+                    <span>{{ project.project_name }}</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session.admin_name }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Project Details Content -->
+        <div class="dashboard-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Project Details Container -->
+            <div class="project-details-container">
+                <!-- Image Section -->
+                <div class="project-image-section">
+                    <div class="project-image-container">
+                        <img id="projectImage" src="/api/projects/{{ project.id }}/image/view?t={{ timestamp }}" alt="{{ project.project_name }}" style="display: none;" onerror="this.style.display='none'; document.getElementById('imagePlaceholder').style.display='flex';" onload="this.style.display='block'; document.getElementById('imagePlaceholder').style.display='none';">
+                        <div class="image-placeholder" id="imagePlaceholder" style="display: flex;">
+                            <i class="fas fa-building"></i>
+                            <span>No Image</span>
+                        </div>
+                        <div class="image-overlay">
+                            <button class="change-image-btn" onclick="changeProjectImage()">
+                                <i class="fas fa-camera"></i>
+                            </button>
+                        </div>
+                        <input type="file" id="changeImageInput" accept="image/*" style="display: none;" onchange="updateProjectImage(this)">
+                    </div>
+                </div>
+
+                <!-- Details Section -->
+                <div class="project-details-section">
+                    <!-- Single Edit Button for Entire Container -->
+                    <button class="container-edit-btn" id="containerEditBtn" onclick="toggleEditMode()">
+                        <i class="fas fa-edit"></i>
+                    </button>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Project Name</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            <span id="displayProjectName">{{ project.project_name }}</span>
+                            <input type="text" id="editProjectName" class="edit-input" style="display: none;" onblur="saveProjectName()" onkeypress="handleEnterKey(event, saveProjectName)">
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Status</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            <span id="displayProjectStatus" class="status-badge {{ project.status or 'active' }}">
+                                {{ project.status|title if project.status else 'Active' }}
+                            </span>
+                            <select id="editProjectStatus" class="edit-input" style="display: none;" onblur="saveProjectStatus()" onchange="saveProjectStatus()">
+                                <option value="active">Active</option>
+                                <option value="completed">Completed</option>
+                                <option value="on-hold">On Hold</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Location</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            <span id="displayProjectLocation">{{ project.location or 'No location set' }}</span>
+                            <input type="text" id="editProjectLocation" class="edit-input" style="display: none;" onblur="saveProjectLocation()" onkeypress="handleEnterKey(event, saveProjectLocation)">
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Total Floors</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            <span id="totalFloorsCount">0</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Created Date</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            {% if project.created_at %}
+                            <span>{{ project.created_at.strftime('%B %d, %Y') }}</span>
+                            {% else %}
+                            <span>Not available</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="detail-row description-row">
+                        <span class="detail-label">Description</span>
+                        <span class="detail-colon">:</span>
+                        <div class="detail-value">
+                            <span id="displayProjectDescription" class="description-text">{{ project.description or '' }}</span>
+                            <textarea id="editProjectDescription" class="edit-input description-input" style="display: none;" onblur="saveProjectDescription()" placeholder="Enter project description..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabs Section -->
+            <div class="tabs-container">
+                <div class="tabs-header">
+                    <button class="tab-btn active" onclick="switchTab('floors')" data-tab="floors">
+                        <i class="fas fa-building"></i>
+                        Floors
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('areas')" data-tab="areas">
+                        <i class="fas fa-map"></i>
+                        Common Areas
+                    </button>
+                </div>
+                
+                <!-- Floors Tab -->
+                <div class="tab-content active" id="floorsTab">
+                    <div class="tab-header">
+                        <h4>Floors Management</h4>
+                        <div class="floor-actions">
+                            <button class="add-floor-btn" onclick="openAddFloorModal()">
+                                <i class="fas fa-plus"></i>
+                                Add Floor
+                            </button>
+                            <button class="bulk-add-btn" onclick="openBulkAddModal()">
+                                <i class="fas fa-layer-group"></i>
+                                Bulk Add
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="floors-grid" id="floorsGrid">
+                        <!-- Floors will be loaded here -->
+                    </div>
+                    
+                    <div class="empty-floors" id="emptyFloors" style="display: none;">
+                        <i class="fas fa-building"></i>
+                        <p>No floors added yet</p>
+                    </div>
+                </div>
+                
+                <!-- Common Areas Tab -->
+                <div class="tab-content" id="areasTab">
+                    <div class="tab-header">
+                        <h4>Common Areas</h4>
+                        <button class="add-area-btn" onclick="openAddAreaModal()">
+                            <i class="fas fa-plus"></i>
+                            Add Area
+                        </button>
+                    </div>
+
+                    <div class="areas-grid" id="areasGrid">
+                        <!-- Common areas will be loaded here -->
+                    </div>
+
+                    <div class="empty-areas" id="emptyAreas" style="display: none;">
+                        <i class="fas fa-map"></i>
+                        <p>No common areas added yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Floor Modal -->
+<div class="modal-overlay" id="addFloorModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>Add Floor</h3>
+            <button class="modal-close" onclick="closeAddFloorModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form class="modal-form" id="addFloorForm" onsubmit="addFloor(event)">
+            <div class="form-group">
+                <label for="floorPrefix">Prefix</label>
+                <input type="text" id="floorPrefix" name="floorPrefix" placeholder="e.g., Floor, Level, UG" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="floorNumber">Number</label>
+                <input type="number" id="floorNumber" name="floorNumber" placeholder="e.g., 1, 2, 3" required>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAddFloorModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Add Floor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Add Floors Modal -->
+<div class="modal-overlay" id="bulkAddModal">
+    <div class="modal-container professional">
+        <div class="modal-header">
+            <h3><i class="fas fa-layer-group"></i>  Add Bulk Floors</h3>
+            <button class="modal-close" onclick="closeBulkAddModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form class="modal-form professional" id="bulkAddForm" onsubmit="bulkAddFloors(event)">
+            <div class="bulk-add-description">
+                <p>Add multiple floors at once by specifying a range. Duplicate floor numbers will be automatically skipped.</p>
+            </div>
+
+            <div class="form-group enhanced">
+                <label for="bulkPrefix">
+                    <i class="fas fa-tag"></i>
+                    Floor Prefix
+                </label>
+                <input type="text" id="bulkPrefix" name="bulkPrefix" placeholder="e.g., Floor, Level, F" required>
+                <small class="form-hint">This will be used as the prefix for all floors (e.g., "Floor 1", "Floor 2")</small>
+            </div>
+
+            <div class="form-row enhanced">
+                <div class="form-group enhanced">
+                    <label for="startNumber">
+                        <i class="fas fa-play"></i>
+                        Start Number
+                    </label>
+                    <input type="number" id="startNumber" name="startNumber" placeholder="1" min="1" required>
+                </div>
+
+                <div class="range-separator">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+
+                <div class="form-group enhanced">
+                    <label for="endNumber">
+                        <i class="fas fa-stop"></i>
+                        End Number
+                    </label>
+                    <input type="number" id="endNumber" name="endNumber" placeholder="10" min="1" required>
+                </div>
+            </div>
+
+            <div class="bulk-preview" id="bulkPreview">
+                <div class="preview-header">
+                    <i class="fas fa-eye"></i>
+                    Preview
+                </div>
+                <div class="preview-content" id="previewContent">
+                    Enter range to see preview
+                </div>
+            </div>
+
+            <div class="modal-actions enhanced">
+                <button type="button" class="btn-secondary" onclick="closeBulkAddModal()">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-plus-circle"></i>
+                    Add Floors
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Floor Modal -->
+<div class="modal-overlay" id="editFloorModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>Edit Floor</h3>
+            <button class="modal-close" onclick="closeEditFloorModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form class="modal-form" id="editFloorForm" onsubmit="updateFloor(event)">
+            <input type="hidden" id="editFloorId" name="editFloorId">
+
+            <div class="form-group">
+                <label for="editFloorPrefix">Prefix</label>
+                <input type="text" id="editFloorPrefix" name="editFloorPrefix" required>
+            </div>
+
+            <div class="form-group">
+                <label for="editFloorNumber">Number</label>
+                <input type="number" id="editFloorNumber" name="editFloorNumber" required min="1">
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeEditFloorModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Update Floor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Common Area Modal -->
+<div class="modal-overlay" id="addAreaModal">
+    <div class="modal-container compact">
+        <div class="modal-header">
+            <h3>Add Common Area</h3>
+            <button class="modal-close" onclick="closeAddAreaModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-form compact">
+            <div class="area-options-grid">
+                <div class="area-option" onclick="addAreaFromOption('Balcony')">
+                    <div class="area-option-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <span>Balcony</span>
+                </div>
+                <div class="area-option" onclick="addAreaFromOption('Sitting Area')">
+                    <div class="area-option-icon">
+                        <i class="fas fa-couch"></i>
+                    </div>
+                    <span>Sitting Area</span>
+                </div>
+                <div class="area-option" onclick="addAreaFromOption('Garden')">
+                    <div class="area-option-icon">
+                        <i class="fas fa-seedling"></i>
+                    </div>
+                    <span>Garden</span>
+                </div>
+                <div class="area-option" onclick="addAreaFromOption('Parking')">
+                    <div class="area-option-icon">
+                        <i class="fas fa-car"></i>
+                    </div>
+                    <span>Parking</span>
+                </div>
+                <div class="area-option" onclick="addAreaFromOption('Swimming Pool')">
+                    <div class="area-option-icon">
+                        <i class="fas fa-swimmer"></i>
+                    </div>
+                    <span>Swimming Pool</span>
+                </div>
+                <div class="area-option" onclick="addAreaFromOption('Gym')">
+                    <div class="area-option-icon">
+                        <i class="fas fa-dumbbell"></i>
+                    </div>
+                    <span>Gym</span>
+                </div>
+                <div class="area-option" onclick="addAreaFromOption('Lobby')">
+                    <div class="area-option-icon">
+                        <i class="fas fa-door-open"></i>
+                    </div>
+                    <span>Lobby</span>
+                </div>
+                <div class="area-option" onclick="addAreaFromOption('Rooftop')">
+                    <div class="area-option-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <span>Rooftop</span>
+                </div>
+                <div class="area-option custom" onclick="openCustomAreaInput()">
+                    <div class="area-option-icon">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <span>Other</span>
+                </div>
+            </div>
+
+            <div class="custom-area-input" id="customAreaInput" style="display: none;">
+                <div class="form-group">
+                    <label for="customAreaName">Custom Area Name</label>
+                    <input type="text" id="customAreaName" placeholder="Enter area name..." onkeypress="handleCustomAreaEnter(event)">
+                </div>
+                <div class="custom-area-actions">
+                    <button type="button" class="btn-secondary" onclick="cancelCustomArea()">Cancel</button>
+                    <button type="button" class="btn-primary" onclick="addCustomArea()">Add Area</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Common Area Modal -->
+<div class="modal-overlay" id="editAreaModal">
+    <div class="modal-container compact">
+        <div class="modal-header">
+            <h3>Edit Common Area</h3>
+            <button class="modal-close" onclick="closeEditAreaModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form class="modal-form compact" id="editAreaForm" onsubmit="updateArea(event)">
+            <input type="hidden" id="editAreaId" name="editAreaId">
+
+            <div class="form-group">
+                <label for="editAreaName">Area Name</label>
+                <input type="text" id="editAreaName" name="editAreaName" required placeholder="Enter area name...">
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeEditAreaModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Update Area</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Notification Popup -->
+<div class="notification-popup" id="notificationPopup">
+    <div class="notification-header">
+        <div class="notification-title">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="notificationTitle">Notification</span>
+        </div>
+        <button class="notification-close" onclick="closeNotification()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <p class="notification-message" id="notificationMessage">Message content</p>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Set current project data for JavaScript
+    window.currentProjectId = {{ project.id }};
+    window.currentProject = {
+        id: {{ project.id }},
+        name: {{ project.project_name|tojson }},
+        location: {{ (project.location or '')|tojson }},
+        description: {{ (project.description or '')|tojson }},
+        image_path: {{ (project.image_path or '')|tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/project_details.js') }}"></script>
+{% endblock %}

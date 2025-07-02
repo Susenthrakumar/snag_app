@@ -1,0 +1,1314 @@
+{% extends "base.html" %}
+
+{% block title %}Client Relations - Snag Management System{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('projects') }}">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Projects</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('contractors.contractors_list') }}">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Contractors</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('snag_inspectors.inspectors_list') }}">
+                    <i class="fas fa-user-secret"></i>
+                    <span>SNAG Inspectors</span>
+                </a>
+            </li>
+            <li class="active">
+                <a href="{{ url_for('client_relations.clients_list') }}">
+                    <i class="fas fa-handshake"></i>
+                    <span>Client Relations</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('appointments.appointments') }}">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Appointments</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>Client Relations</h1>
+            </div>
+            
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>Administrator</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Client Relations Content -->
+        <div class="clients-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Client Relations Header -->
+            <div class="clients-header">
+                <div class="filters-section">
+                    <div class="filter-group status-filter">
+                        <label>Status:</label>
+                        <select id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="resend">Resend</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="action-section">
+                    <div class="search-group">
+                        <input type="text" id="searchClients" placeholder="Search clients...">
+                        <i class="fas fa-search"></i>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="showSendInvitationModal()">
+                        <i class="fas fa-envelope"></i> Send Invitation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Client Relations List -->
+            <div class="clients-list">
+                {% if clients %}
+                    <div class="clients-grid">
+                        {% for client in clients %}
+                        <div class="client-card">
+                            <div class="client-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="client-info">
+                                <h3>{{ client.name or 'Pending Registration' }}</h3>
+                                <p class="client-email">{{ client.email }}</p>
+                                {% if client.username %}
+                                <p class="client-username">@{{ client.username }}</p>
+                                {% endif %}
+                                {% if client.company_name %}
+                                <p class="client-company">{{ client.company_name }}</p>
+                                {% endif %}
+                                {% if client.phone %}
+                                <p class="client-phone">
+                                    <i class="fas fa-phone"></i>
+                                    {{ client.country_code or '+91' }}{{ client.phone }}
+                                </p>
+                                {% endif %}
+                                <span class="status-badge status-{{ client.status }}">
+                                    {{ client.status.title() }}
+                                </span>
+                                {% if client.invitation_sent_at %}
+                                <p class="invitation-date">Invited: {{ client.invitation_sent_at.strftime('%Y-%m-%d') }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="client-actions">
+                                <button class="btn-icon" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                {% if client.status in ['pending', 'resend'] %}
+                                <button class="btn-icon" title="Resend Invitation" onclick="resendInvitation('{{ client.email }}')">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn-icon" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <h3>No Clients Yet</h3>
+                        <p>Add clients to manage your customer relationships.</p>
+                        <button class="btn btn-primary" onclick="showSendInvitationModal()">
+                            <i class="fas fa-plus"></i> Send First Invitation
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Invitation Modal -->
+<div id="sendInvitationModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Send Client Invitations</h2>
+            <span class="close" onclick="closeSendInvitationModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="invitation-form">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <div class="email-input-group">
+                        <input type="email" id="clientEmail" placeholder="Enter client email...">
+                        <button type="button" class="btn-add-email" onclick="addEmail()" id="addEmailBtn">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="emailValidationMessage" class="validation-message"></div>
+                </div>
+
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label>Email List (<span id="emailCount">0</span> emails)</label>
+                        <button type="button" class="btn-clear-emails" onclick="clearAllEmails()" id="clearEmailsBtn" style="display: none;">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                    </div>
+                    <div id="emailList" class="email-list">
+                        <p class="no-emails">No emails added yet. Add emails above.</p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Upload CSV File</label>
+                    <div class="file-upload-area" onclick="document.getElementById('csvFile').click()">
+                        <i class="fas fa-upload"></i>
+                        <p>Click to upload CSV file with email addresses</p>
+                        <input type="file" id="csvFile" accept=".csv" style="display: none;" onchange="handleFileUpload(this)">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSendInvitationModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="sendInvitations()">
+                <i class="fas fa-envelope"></i> Send Invitations
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Client Relations specific styles */
+.clients-content {
+    padding: 20px;
+}
+
+.clients-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 25px 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.filters-section {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.action-section {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0px;
+}
+
+.filter-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-right: 12px;
+    white-space: nowrap;
+}
+
+.filter-group select {
+    padding: 10px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 50px;
+    background: white;
+    color: #2d3748;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 140px;
+}
+
+.filter-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-group input {
+    padding: 12px 45px 12px 20px;
+    border: 2px solid #e2e8f0;
+    border-radius: 50px;
+    background: white;
+    color: #2d3748;
+    font-size: 14px;
+    width: 300px;
+    transition: all 0.3s ease;
+}
+
+.search-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-group i {
+    position: absolute;
+    right: 18px;
+    color: #a0aec0;
+    font-size: 16px;
+}
+
+.btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 25px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e0;
+}
+
+/* Client Cards */
+.clients-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.client-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+.client-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.client-avatar {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.client-info {
+    flex: 1;
+}
+
+.client-info h3 {
+    margin: 0 0 8px 0;
+    color: #2d3748;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.client-info p {
+    margin: 4px 0;
+    color: #718096;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.client-email {
+    color: #667eea !important;
+    font-weight: 500;
+}
+
+.client-username {
+    color: #38a169 !important;
+    font-weight: 500;
+}
+
+.client-company {
+    color: #d69e2e !important;
+    font-weight: 500;
+}
+
+.client-phone {
+    color: #805ad5 !important;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-top: 8px;
+}
+
+.status-pending {
+    background: #fed7d7;
+    color: #c53030;
+}
+
+.status-active {
+    background: #c6f6d5;
+    color: #2f855a;
+}
+
+.status-inactive {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.status-resend {
+    background: #feebc8;
+    color: #c05621;
+}
+
+.invitation-date {
+    font-size: 12px;
+    color: #a0aec0 !important;
+    margin-top: 8px;
+}
+
+.client-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50px;
+    background: #f7fafc;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.btn-icon:hover {
+    background: #667eea;
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: white;
+    font-size: 36px;
+}
+
+.empty-state h3 {
+    margin: 0 0 10px 0;
+    color: #2d3748;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.empty-state p {
+    margin: 0 0 30px 0;
+    color: #718096;
+    font-size: 16px;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 8% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 70%;
+    max-width: 450px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.close {
+    color: #a0aec0;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close:hover {
+    color: #4a5568;
+}
+
+.modal-body {
+    padding: 20px 22px;
+}
+
+.modal-footer {
+    padding: 15px 22px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    color: #2d3748;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.email-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.email-input-group input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 25px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+}
+
+.email-input-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-add-email {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.btn-add-email:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-add-email:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.validation-message {
+    margin-top: 6px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.validation-message.success {
+    background: #c6f6d5;
+    color: #2f855a;
+    border: 1px solid #9ae6b4;
+}
+
+.validation-message.error {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+.validation-message.info {
+    background: #bee3f8;
+    color: #2b6cb0;
+    border: 1px solid #90cdf4;
+}
+
+.email-list {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    background: #f7fafc;
+}
+
+.no-emails {
+    text-align: center;
+    color: #a0aec0;
+    font-style: italic;
+    margin: 0;
+}
+
+.email-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.email-item:last-child {
+    margin-bottom: 0;
+}
+
+.remove-email {
+    background: #fed7d7;
+    color: #c53030;
+    border: none;
+    border-radius: 50px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.remove-email:hover {
+    background: #c53030;
+    color: white;
+}
+
+.btn-clear-emails {
+    background: #fed7d7;
+    color: #c53030;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-clear-emails:hover {
+    background: #c53030;
+    color: white;
+}
+
+.file-upload-area {
+    border: 2px dashed #cbd5e0;
+    border-radius: 6px;
+    padding: 25px 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f7fafc;
+}
+
+.file-upload-area:hover {
+    border-color: #667eea;
+    background: #edf2f7;
+}
+
+.file-upload-area i {
+    font-size: 24px;
+    color: #a0aec0;
+    margin-bottom: 8px;
+}
+
+.file-upload-area p {
+    margin: 0;
+    color: #4a5568;
+    font-size: 12px;
+}
+
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 20px;
+}
+
+.flash-message {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.flash-success {
+    background: #c6f6d5;
+    color: #2f855a;
+    border: 1px solid #9ae6b4;
+}
+
+.flash-error {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+.flash-info {
+    background: #bee3f8;
+    color: #2b6cb0;
+    border: 1px solid #90cdf4;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .clients-header {
+        flex-direction: column;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    .filters-section,
+    .action-section {
+        justify-content: center;
+    }
+
+    .search-group input {
+        width: 100%;
+    }
+
+    .clients-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .client-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .client-actions {
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .modal-content {
+        width: 85%;
+        margin: 15% auto;
+    }
+}
+</style>
+
+<script>
+let emailList = [];
+
+function showSendInvitationModal() {
+    document.getElementById('sendInvitationModal').style.display = 'block';
+}
+
+function closeSendInvitationModal() {
+    document.getElementById('sendInvitationModal').style.display = 'none';
+    emailList = [];
+    updateEmailList();
+    document.getElementById('clientEmail').value = '';
+}
+
+function addEmail() {
+    const emailInput = document.getElementById('clientEmail');
+    const addBtn = document.getElementById('addEmailBtn');
+    const validationMsg = document.getElementById('emailValidationMessage');
+    const email = emailInput.value.trim();
+
+    // Clear previous validation message
+    validationMsg.textContent = '';
+    validationMsg.className = 'validation-message';
+
+    if (!email) {
+        showValidationMessage('error', 'Please enter an email address');
+        return;
+    }
+
+    if (!isValidEmail(email)) {
+        showValidationMessage('error', 'Please enter a valid email address');
+        return;
+    }
+
+    if (emailList.includes(email)) {
+        showValidationMessage('error', 'Email already added to the list');
+        return;
+    }
+
+    // Show loading state
+    addBtn.disabled = true;
+    addBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    showValidationMessage('info', 'Validating email...');
+
+    // Validate email availability
+    fetch('/client_relations/api/validate-email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Restore button
+        addBtn.disabled = false;
+        addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+
+        if (data.available) {
+            emailList.push(email);
+            updateEmailList();
+            emailInput.value = '';
+
+            if (data.message && data.message.includes('update existing')) {
+                showValidationMessage('info', `${email} - ${data.message}`);
+                showNotification('info', `${email} will update existing client invitation`);
+            } else {
+                showValidationMessage('success', `${email} added successfully`);
+            }
+
+            // Clear validation message after 3 seconds
+            setTimeout(() => {
+                validationMsg.textContent = '';
+                validationMsg.className = 'validation-message';
+            }, 3000);
+        } else {
+            showValidationMessage('error', `Cannot add ${email}: ${data.message}`);
+        }
+    })
+    .catch(error => {
+        // Restore button
+        addBtn.disabled = false;
+        addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+
+        console.error('Error validating email:', error);
+        showValidationMessage('error', 'Error validating email. Please try again.');
+    });
+}
+
+function showValidationMessage(type, message) {
+    const validationMsg = document.getElementById('emailValidationMessage');
+    validationMsg.textContent = message;
+    validationMsg.className = `validation-message ${type}`;
+}
+
+function removeEmail(email) {
+    emailList = emailList.filter(e => e !== email);
+    updateEmailList();
+}
+
+function updateEmailList() {
+    const container = document.getElementById('emailList');
+    const countElement = document.getElementById('emailCount');
+    const clearBtn = document.getElementById('clearEmailsBtn');
+
+    // Update count
+    countElement.textContent = emailList.length;
+
+    // Show/hide clear button
+    if (emailList.length > 0) {
+        clearBtn.style.display = 'flex';
+    } else {
+        clearBtn.style.display = 'none';
+    }
+
+    if (emailList.length === 0) {
+        container.innerHTML = '<p class="no-emails">No emails added yet. Add emails above.</p>';
+        return;
+    }
+
+    container.innerHTML = emailList.map((email, index) => `
+        <div class="email-item" style="animation: slideIn 0.3s ease ${index * 0.1}s both;">
+            <span>${email}</span>
+            <button onclick="removeEmail('${email}')" class="remove-email" title="Remove ${email}">×</button>
+        </div>
+    `).join('');
+}
+
+function clearAllEmails() {
+    if (emailList.length === 0) return;
+
+    if (confirm(`Are you sure you want to remove all ${emailList.length} emails from the list?`)) {
+        emailList = [];
+        updateEmailList();
+        showNotification('info', 'All emails cleared from the list');
+    }
+}
+
+function handleFileUpload(input) {
+    const file = input.files[0];
+    if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Show loading state
+        const uploadArea = document.querySelector('.file-upload-area');
+        const originalContent = uploadArea.innerHTML;
+        uploadArea.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Processing CSV file...</p>';
+
+        fetch('/client_relations/api/upload-csv', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Restore upload area
+            uploadArea.innerHTML = originalContent;
+
+            if (data.success) {
+                // Add emails to the list instead of sending immediately
+                data.emails.forEach(email => {
+                    if (!emailList.includes(email)) {
+                        emailList.push(email);
+                    }
+                });
+                updateEmailList();
+
+                // Clear file input
+                input.value = '';
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            // Restore upload area
+            uploadArea.innerHTML = originalContent;
+            console.error('Error:', error);
+            alert('Error uploading file');
+        });
+    }
+}
+
+function sendInvitations() {
+    if (emailList.length === 0) {
+        alert('Please add at least one email address');
+        return;
+    }
+
+    // Show loading state
+    const sendBtn = document.querySelector('.modal-footer .btn-primary');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    sendBtn.disabled = true;
+
+    fetch('/client_relations/api/send-invitations', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            emails: emailList
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Restore button
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+
+        if (data.success) {
+            closeSendInvitationModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        // Restore button
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+
+        console.error('Error:', error);
+        alert('Error sending invitations');
+    });
+}
+
+function resendInvitation(email) {
+    if (confirm(`Resend invitation to ${email}?`)) {
+        // Find the resend button and show loading state
+        const resendBtn = event.target.closest('.btn-icon');
+        const originalIcon = resendBtn.innerHTML;
+        resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        resendBtn.disabled = true;
+
+        fetch('/client_relations/api/send-invitations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                emails: [email]
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Restore button
+            resendBtn.innerHTML = originalIcon;
+            resendBtn.disabled = false;
+
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            // Restore button
+            resendBtn.innerHTML = originalIcon;
+            resendBtn.disabled = false;
+
+            console.error('Error:', error);
+            alert('Error resending invitation');
+        });
+    }
+}
+
+// Search and filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const emailInput = document.getElementById('clientEmail');
+    if (emailInput) {
+        emailInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addEmail();
+            }
+        });
+
+        // Real-time email validation
+        let emailValidationTimeout;
+        emailInput.addEventListener('input', function() {
+            const email = this.value.trim();
+            const validationMsg = document.getElementById('emailValidationMessage');
+
+            // Clear previous timeout
+            clearTimeout(emailValidationTimeout);
+
+            if (!email) {
+                validationMsg.textContent = '';
+                validationMsg.className = 'validation-message';
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                showValidationMessage('error', 'Invalid email format');
+                return;
+            }
+
+            if (emailList.includes(email)) {
+                showValidationMessage('error', 'Email already in the list');
+                return;
+            }
+
+            // Validate after 500ms delay
+            emailValidationTimeout = setTimeout(() => {
+                showValidationMessage('info', 'Checking availability...');
+
+                fetch('/client_relations/api/validate-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: email })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.available) {
+                        if (data.message && data.message.includes('update existing')) {
+                            showValidationMessage('info', 'Will update existing client');
+                        } else {
+                            showValidationMessage('success', 'Email available');
+                        }
+                    } else {
+                        showValidationMessage('error', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error validating email:', error);
+                    showValidationMessage('error', 'Error checking availability');
+                });
+            }, 500);
+        });
+    }
+
+    // Search functionality
+    const searchInput = document.getElementById('searchClients');
+    const statusFilter = document.getElementById('statusFilter');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', filterClients);
+    }
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterClients);
+    }
+});
+
+function filterClients() {
+    const searchTerm = document.getElementById('searchClients').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+
+    const clientCards = document.querySelectorAll('.client-card');
+
+    clientCards.forEach(card => {
+        const name = card.querySelector('.client-info h3').textContent.toLowerCase();
+        const email = card.querySelector('.client-email').textContent.toLowerCase();
+        const username = card.querySelector('.client-username');
+        const usernameText = username ? username.textContent.toLowerCase() : '';
+        const company = card.querySelector('.client-company');
+        const companyText = company ? company.textContent.toLowerCase() : '';
+        const status = card.querySelector('.status-badge').textContent.toLowerCase();
+
+        // Search filter
+        const matchesSearch = !searchTerm ||
+            name.includes(searchTerm) ||
+            email.includes(searchTerm) ||
+            usernameText.includes(searchTerm) ||
+            companyText.includes(searchTerm);
+
+        // Status filter
+        const matchesStatus = !statusFilter || status.includes(statusFilter);
+
+        // Show/hide card
+        if (matchesSearch && matchesStatus) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Notification system
+function showNotification(type, message) {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(n => n.remove());
+
+    // Create notification
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <span>${message}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+    `;
+
+    // Add to page
+    document.body.appendChild(notification);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Prevent form resubmission on refresh
+if (window.history.replaceState) {
+    window.history.replaceState(null, null, window.location.href);
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('sendInvitationModal');
+    if (event.target === modal) {
+        closeSendInvitationModal();
+    }
+}
+
+// Email validation helper
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// Add CSS animation for email items
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

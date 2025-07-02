@@ -1,0 +1,722 @@
+{% extends "base.html" %}
+
+{% block title %}Appointments - SNAG Management System{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+            </div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('owner.dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="active">
+                <a href="{{ url_for('owner.appointments') }}">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Book Appointment</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Snag Progress</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Snag Reports</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>Appointment Booking</h1>
+            </div>
+
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session.get('owner_name', 'Owner') }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                            <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if appointment %}
+            <!-- Existing Appointment Details -->
+            <div class="details-container">
+                <!-- Page Header -->
+                <div class="details-header">
+                    <h1><i class="fas fa-calendar-check"></i> Appointment Confirmed</h1>
+                    <p>Your SNAG inspection appointment has been successfully scheduled</p>
+                </div>
+
+                <!-- Appointment Details Container -->
+                <div class="details-card">
+                    <div class="details-card-header">
+                        <div class="details-card-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <h3 class="details-card-title">Appointment Details</h3>
+                    </div>
+                    <div class="details-info-grid">
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-calendar"></i>
+                                Date
+                            </div>
+                            <div class="details-info-value">{{ appointment.appointment_date.strftime('%A, %B %d, %Y') }}</div>
+                        </div>
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-clock"></i>
+                                Time
+                            </div>
+                            <div class="details-info-value">{{ appointment.start_time }} - {{ appointment.end_time }}</div>
+                        </div>
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-info-circle"></i>
+                                Status
+                            </div>
+                            <div class="details-info-value">
+                                {% if appointment.status == 'cancelled' %}
+                                    <span class="details-status-badge" style="background-color: #dc3545; color: white;">
+                                        <i class="fas fa-times-circle"></i>
+                                        Cancelled
+                                    </span>
+                                {% else %}
+                                    <span class="details-status-badge">
+                                        <i class="fas fa-check-circle"></i>
+                                        {{ appointment.status.title() }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-clipboard-check"></i>
+                                Type
+                            </div>
+                            <div class="details-info-value">SNAG Inspection</div>
+                        </div>
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-user-tie"></i>
+                                Inspector
+                            </div>
+                            <div class="details-info-value">{{ appointment.inspector_name or 'TBA' }}</div>
+                        </div>
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-tools"></i>
+                                Specialization
+                            </div>
+                            <div class="details-info-value">{{ appointment.specialization or 'SNAG Inspector' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cancellation Information Card (if cancelled) -->
+                {% if appointment.status == 'cancelled' %}
+                <div class="details-card" style="border-left: 4px solid #dc3545;">
+                    <div class="details-card-header">
+                        <div class="details-card-icon" style="background-color: #dc3545;">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <h3 class="details-card-title" style="color: #dc3545;">Cancellation Information</h3>
+                    </div>
+                    <div class="details-info-grid">
+                        {% if appointment.cancelled_by %}
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-user-times"></i>
+                                Cancelled By
+                            </div>
+                            <div class="details-info-value">{{ appointment.cancelled_by.title() }}</div>
+                        </div>
+                        {% endif %}
+                        {% if appointment.cancelled_at %}
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-calendar-times"></i>
+                                Cancelled On
+                            </div>
+                            <div class="details-info-value">{{ appointment.cancelled_at.strftime('%A, %B %d, %Y at %I:%M %p') if appointment.cancelled_at else 'N/A' }}</div>
+                        </div>
+                        {% endif %}
+                        {% if appointment.cancellation_reason %}
+                        <div class="details-info-item" style="grid-column: 1 / -1;">
+                            <div class="details-info-label">
+                                <i class="fas fa-comment-alt"></i>
+                                Reason
+                            </div>
+                            <div class="details-info-value" style="background-color: #fff3cd; padding: 10px; border-radius: 5px; border-left: 3px solid #ffc107;">
+                                {{ appointment.cancellation_reason }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if appointment.can_rebook %}
+                        <div class="details-info-item" style="grid-column: 1 / -1;">
+                            <div class="alert alert-info" style="margin: 0; padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 8px;">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Good News!</strong> You can book a new appointment. Please use the "Book New Appointment" button below.
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Inspector Information Card -->
+                <div class="details-card">
+                    <div class="details-card-header">
+                        <div class="details-card-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <h3 class="details-card-title">Inspector Contact</h3>
+                    </div>
+                    <div class="details-info-grid">
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-phone"></i>
+                                Phone
+                            </div>
+                            <div class="details-info-value">{{ appointment.phone or 'Will be provided' }}</div>
+                        </div>
+                        <div class="details-info-item">
+                            <div class="details-info-label">
+                                <i class="fas fa-envelope"></i>
+                                Email
+                            </div>
+                            <div class="details-info-value">{{ appointment.email or 'Will be provided' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="details-actions-section">
+                    {% if appointment.status == 'cancelled' %}
+                        <!-- Cancelled appointment actions -->
+                        {% if appointment.can_rebook %}
+                            <div class="details-action-buttons">
+                                <button type="button" class="details-rebook-btn" onclick="enableRebooking()">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    <span>Book New Appointment</span>
+                                </button>
+                                <a href="{{ url_for('owner.download_appointment_pdf', appointment_id=appointment.id) }}" class="details-download-btn">
+                                    <i class="fas fa-download"></i>
+                                    <span>Download Cancelled Appointment PDF</span>
+                                </a>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning" style="margin: 0;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Re-booking not available.</strong> Please contact administration for assistance.
+                            </div>
+                        {% endif %}
+                    {% elif appointment.is_acknowledged %}
+                        <!-- Show acknowledgment info and download buttons -->
+                        <div class="details-acknowledgment-info">
+                            <div class="details-ack-details">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Acknowledged by: {{ appointment.acknowledgment_name }} ({{ appointment.acknowledgment_phone }})</span>
+                            </div>
+                            <div class="details-ack-buttons">
+                                <a href="{{ url_for('owner.download_appointment_pdf', appointment_id=appointment.id) }}" class="details-download-btn">
+                                    <i class="fas fa-download"></i>
+                                    <span>Download Appointment pdf</span>
+                                </a>
+                                <a href="{{ url_for('owner.download_acknowledgment_pdf', appointment_id=appointment.id) }}" class="details-download-btn details-ack-btn">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span>Download Acknowledgment</span>
+                                </a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- Show acknowledge button -->
+                        <div class="details-action-buttons">
+                            <button type="button" class="details-acknowledge-btn" onclick="showAcknowledgmentModal()">
+                                <i class="fas fa-user-check"></i>
+                                <span>Acknowledge Appointment</span>
+                            </button>
+                            <a href="{{ url_for('owner.download_appointment_pdf', appointment_id=appointment.id) }}" class="details-download-btn">
+                                <i class="fas fa-download"></i>
+                                <span>Download Appointment PDF</span>
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <!-- No Appointment - Show Booking Form -->
+            <div class="booking-container">
+                <!-- Page Header -->
+                <div class="booking-header">
+                    <h1>Schedule SNAG Inspection</h1>
+                    <p>Book your professional SNAG inspection appointment</p>
+                </div>
+
+                <!-- Booking Form -->
+                <div class="booking-section">
+                    <div class="booking-section-header">
+                        <div class="booking-section-icon">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <h3 class="booking-section-title">Schedule Appointment</h3>
+                    </div>
+                    <form method="POST" id="bookingForm">
+                        <!-- Date Selection -->
+                        <div class="booking-form-group">
+                            <label for="appointmentDate" class="booking-form-label">
+                                <i class="fas fa-calendar"></i>
+                                Select Date
+                            </label>
+                            <input type="date" id="appointmentDate" name="appointment_date" class="booking-form-input" required>
+                            <div class="booking-form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Minimum 48 hours advance booking required
+                            </div>
+                        </div>
+
+                        <!-- Time Slot Selection -->
+                        <div class="booking-form-group">
+                            <label for="timeSlot" class="booking-form-label">
+                                <i class="fas fa-clock"></i>
+                                Select Time
+                            </label>
+                            <select id="timeSlot" name="time_slot" class="booking-form-select" required>
+                                <option value="">Choose time slot</option>
+                            </select>
+                            <div class="booking-form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Available time slots will appear after selecting date
+                            </div>
+                        </div>
+
+                        <!-- Inspector Selection -->
+                        <div class="booking-form-group">
+                            <label for="inspector" class="booking-form-label">
+                                <i class="fas fa-user-tie"></i>
+                                Select Inspector
+                            </label>
+                            <select id="inspector" name="inspector_id" class="booking-form-select" required>
+                                <option value="">Choose inspector</option>
+                                {% if inspectors %}
+                                    {% for inspector in inspectors %}
+                                    <option value="{{ inspector.id }}"
+                                            data-name="{{ inspector.name }}"
+                                            data-phone="{{ inspector.phone }}"
+                                            data-email="{{ inspector.email }}"
+                                            data-specialization="{{ inspector.specialization }}">
+                                        {{ inspector.name }}
+                                    </option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="" disabled>No inspectors available</option>
+                                {% endif %}
+                            </select>
+                            <div class="booking-form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Select your preferred SNAG inspector
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="booking-form-group">
+                            <label for="notes" class="booking-form-label">
+                                <i class="fas fa-sticky-note"></i>
+                                Additional Notes (Optional)
+                            </label>
+                            <textarea id="notes" name="notes" class="booking-form-textarea" rows="3"
+                                      placeholder="Any special requirements or notes for the inspector..."></textarea>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="booking-submit-container">
+                            <button type="submit" class="booking-submit-btn">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>Book Appointment</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+
+<!-- Professional Appointment Booking Styles -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/appointment-booking.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/appointment-details.css') }}">
+
+
+<!-- JavaScript for Appointment Booking -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('appointmentDate');
+    const timeSlotSelect = document.getElementById('timeSlot');
+    const inspectorSelect = document.getElementById('inspector');
+    const bookingForm = document.getElementById('bookingForm');
+
+    // Set minimum date (48 hours from now)
+    const now = new Date();
+    const minDate = new Date(now.getTime() + (48 * 60 * 60 * 1000));
+    dateInput.min = minDate.toISOString().split('T')[0];
+
+    // Disable weekends
+    dateInput.addEventListener('input', function() {
+        const selectedDate = new Date(this.value);
+        const dayOfWeek = selectedDate.getDay();
+
+        if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday = 0, Saturday = 6
+            alert('Weekend appointments are not available. Please select a weekday.');
+            this.value = '';
+            return;
+        }
+
+        // Load available time slots
+        loadTimeSlots(this.value);
+    });
+
+    // Load time slots for selected date
+    function loadTimeSlots(date) {
+        if (!date) return;
+
+        timeSlotSelect.innerHTML = '<option value="">Loading...</option>';
+
+        fetch(`/owner/api/time-slots?date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                timeSlotSelect.innerHTML = '<option value="">Choose time slot</option>';
+
+                if (data.success && data.slots.length > 0) {
+                    data.slots.forEach(slot => {
+                        const option = document.createElement('option');
+                        option.value = slot.slot_name;
+                        option.textContent = `${slot.start_time} - ${slot.end_time}`;
+                        timeSlotSelect.appendChild(option);
+                    });
+                } else {
+                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading time slots:', error);
+                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            });
+    }
+
+    // Handle form submission
+    bookingForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const submitBtn = this.querySelector('.booking-submit-btn');
+        const originalText = submitBtn.innerHTML;
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Booking...</span>';
+
+        // Get form data
+        const appointmentDate = document.getElementById('appointmentDate').value;
+        const timeSlot = document.getElementById('timeSlot').value;
+        const inspectorId = document.getElementById('inspector').value;
+        const notes = document.getElementById('notes').value;
+
+        // Validate required fields
+        if (!appointmentDate || !timeSlot || !inspectorId) {
+            alert('Please fill in all required fields');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            return;
+        }
+
+        // Prepare JSON data
+        const bookingData = {
+            date: appointmentDate,
+            time: timeSlot,
+            inspector_id: inspectorId,
+            notes: notes
+        };
+
+        // Submit booking
+        fetch('/owner/api/book-appointment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bookingData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show professional success popup
+                showProfessionalPopup(
+                    'success',
+                    'Appointment Booked Successfully!',
+                    'Email notifications have been sent to you and the inspector. You will be redirected to view your appointment details.',
+                    [
+                        {
+                            text: 'View Appointment',
+                            class: 'primary',
+                            onclick: 'redirectToAppointments()'
+                        }
+                    ]
+                );
+            } else {
+                alert(data.message || 'Failed to book appointment. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error booking appointment:', error);
+            alert('An error occurred while booking the appointment. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+});
+</script>
+
+{% if appointment %}
+<script>
+const APPOINTMENT_ID = {{ appointment.id }};
+</script>
+{% endif %}
+
+<script>
+// Acknowledgment Modal Functions
+function showAcknowledgmentModal() {
+    document.getElementById('acknowledgmentModal').style.display = 'block';
+}
+
+function closeAcknowledgmentModal() {
+    document.getElementById('acknowledgmentModal').style.display = 'none';
+    document.getElementById('acknowledgmentForm').reset();
+}
+
+// Handle acknowledgment form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const acknowledgmentForm = document.getElementById('acknowledgmentForm');
+    if (acknowledgmentForm) {
+        acknowledgmentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('ackName').value.trim();
+            const phone = document.getElementById('ackPhone').value.trim();
+
+            if (!name || !phone) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            if (typeof APPOINTMENT_ID === 'undefined') {
+                alert('No appointment found');
+                return;
+            }
+
+            // Submit acknowledgment
+            fetch('/owner/api/acknowledge-appointment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    appointment_id: APPOINTMENT_ID,
+                    name: name,
+                    phone: phone
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Reload to show updated state
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+    }
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('acknowledgmentModal');
+    if (event.target == modal) {
+        closeAcknowledgmentModal();
+    }
+}
+</script>
+
+<!-- Acknowledgment Modal -->
+<div id="acknowledgmentModal" class="details-modal">
+    <div class="details-modal-content">
+        <div class="details-modal-header">
+            <h3><i class="fas fa-user-check"></i> Acknowledge Appointment</h3>
+            <span class="details-modal-close" onclick="closeAcknowledgmentModal()">&times;</span>
+        </div>
+        <div class="details-modal-body">
+            <p class="details-modal-description">
+                If you cannot attend the appointment, please provide the details of the person who will acknowledge on your behalf:
+            </p>
+            <form id="acknowledgmentForm">
+                <div class="details-form-group">
+                    <label for="ackName">
+                        <i class="fas fa-user"></i>
+                        Full Name
+                    </label>
+                    <input type="text" id="ackName" name="ackName" required placeholder="Enter full name">
+                </div>
+                <div class="details-form-group">
+                    <label for="ackPhone">
+                        <i class="fas fa-phone"></i>
+                        Phone Number
+                    </label>
+                    <input type="tel" id="ackPhone" name="ackPhone" required placeholder="Enter phone number" value="+971 ">
+                </div>
+                <div class="details-form-actions">
+                    <button type="button" class="details-btn-cancel" onclick="closeAcknowledgmentModal()">Cancel</button>
+                    <button type="submit" class="details-btn-acknowledge">
+                        <i class="fas fa-check"></i>
+                        Acknowledge
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Professional popup functions
+function showProfessionalPopup(type, title, message, buttons) {
+    const popup = document.createElement('div');
+    popup.className = 'professional-popup';
+    popup.id = 'professionalPopup';
+
+    let iconClass;
+    if (type === 'confirm') {
+        iconClass = 'fas fa-question-circle';
+    } else if (type === 'success') {
+        iconClass = 'fas fa-check-circle';
+    } else {
+        iconClass = 'fas fa-info-circle';
+    }
+
+    const buttonsHtml = buttons.map(btn =>
+        `<button class="professional-popup-btn ${btn.class}" onclick="${btn.onclick}">${btn.text}</button>`
+    ).join('');
+
+    popup.innerHTML = `
+        <div class="professional-popup-content ${type}">
+            <i class="professional-popup-icon ${type} ${iconClass}"></i>
+            <h2 class="professional-popup-title">${title}</h2>
+            <p class="professional-popup-message">${message}</p>
+            <div class="professional-popup-buttons">
+                ${buttonsHtml}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(popup);
+}
+
+function closeProfessionalPopup() {
+    const popup = document.getElementById('professionalPopup');
+    if (popup) {
+        popup.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => {
+            popup.remove();
+        }, 300);
+    }
+}
+
+function proceedWithRebooking() {
+    closeProfessionalPopup();
+    // Redirect to appointments page to show booking form
+    window.location.href = '/owner/appointments?rebook=1';
+}
+
+function redirectToAppointments() {
+    closeProfessionalPopup();
+    // Redirect to appointments page to show confirmation
+    window.location.href = '/owner/appointments';
+}
+
+// Re-booking functionality for cancelled appointments
+function enableRebooking() {
+    showProfessionalPopup(
+        'confirm',
+        'Re-booking Available',
+        'This will allow you to book a new appointment. The current cancelled appointment details will remain for your records. Do you want to continue?',
+        [
+            {
+                text: 'Cancel',
+                class: 'secondary',
+                onclick: 'closeProfessionalPopup()'
+            },
+            {
+                text: 'Continue',
+                class: 'primary',
+                onclick: 'proceedWithRebooking()'
+            }
+        ]
+    );
+}
+
+{% if appointment %}
+var APPOINTMENT_ID = {{ appointment.id }};
+{% endif %}
+</script>
+
+{% endblock %}

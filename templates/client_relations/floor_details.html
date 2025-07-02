@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}{{ floor.floor_name }} - {{ project.project_name }} - Client Dashboard{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('client_relations.dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="active">
+                <a href="{{ url_for('client_relations.projects') }}">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>My Projects</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-comments"></i>
+                    <span>Messages</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Appointments</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Profile</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">
+                    <a href="{{ url_for('client_relations.dashboard') }}">Dashboard</a>
+                    <span>/</span>
+                    <a href="{{ url_for('client_relations.projects') }}">Projects</a>
+                    <span>/</span>
+                    <a href="{{ url_for('client_relations.project_details', project_id=project.id) }}">{{ project.project_name }}</a>
+                    <span>/</span>
+                    <span>{{ floor.floor_name }}</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session.client_name or 'Client' }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Floor Details Content -->
+        <div class="floor-details-content">
+            <!-- Floor Header -->
+            <div class="floor-header-section">
+                <div class="floor-info">
+                    <h1>{{ floor.floor_name }}</h1>
+                    <p>{{ project.project_name }}</p>
+                </div>
+                <div class="floor-stats-summary">
+                    <div class="stat-card">
+                        <span class="stat-number">{{ units|length }}</span>
+                        <span class="stat-label">Total Units</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">{{ units|selectattr('owner_name')|list|length }}</span>
+                        <span class="stat-label">Assigned</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">{{ units|rejectattr('owner_name')|list|length }}</span>
+                        <span class="stat-label">Not Assigned</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Units Grid -->
+            <div class="units-section">
+                <h2>Units</h2>
+                <div class="units-grid">
+                    {% for unit in units %}
+                    <div class="unit-card {% if unit.owner_name %}assigned{% else %}not-assigned{% endif %}" onclick="viewUnitDetails({{ unit.id }})">
+                        <div class="unit-header">
+                            <h3>{{ unit.unit_number }}</h3>
+                            <span class="unit-status {% if unit.owner_name %}assigned{% else %}not-assigned{% endif %}">
+                                {% if unit.owner_name %}Assigned{% else %}Not Assigned{% endif %}
+                            </span>
+                        </div>
+                        {% if unit.owner_name %}
+                        <div class="unit-owner">
+                            <p><strong>Owner:</strong> {{ unit.owner_name }}</p>
+                            {% if unit.owner_password %}
+                            <div class="invitation-status registered">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Registered</span>
+                            </div>
+                            {% else %}
+                            <div class="invitation-status pending">
+                                <i class="fas fa-paper-plane"></i>
+                                <span>Invitation Sent</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+.floor-details-content {
+    padding: 30px;
+}
+
+.floor-header-section {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.floor-info h1 {
+    margin: 0 0 8px 0;
+    color: #1a202c;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.floor-info p {
+    margin: 0;
+    color: #64748b;
+    font-size: 16px;
+}
+
+.floor-stats-summary {
+    display: flex;
+    gap: 20px;
+}
+
+.stat-card {
+    text-align: center;
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 12px;
+    min-width: 100px;
+}
+
+.stat-number {
+    display: block;
+    font-size: 28px;
+    font-weight: 800;
+    color: #1a202c;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.units-section {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.units-section h2 {
+    margin: 0 0 20px 0;
+    color: #1a202c;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.units-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.unit-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 15px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.unit-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.unit-card.assigned {
+    background: #e6fffa;
+    border-color: #38b2ac;
+}
+
+.unit-card.not-assigned {
+    background: #f7fafc;
+    border-color: #cbd5e0;
+}
+
+.unit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.unit-header h3 {
+    margin: 0;
+    color: #1a202c;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.unit-status {
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.unit-status.assigned {
+    background: #38b2ac;
+    color: white;
+}
+
+.unit-status.not-assigned {
+    background: #cbd5e0;
+    color: #4a5568;
+}
+
+.unit-owner p {
+    margin: 0 0 8px 0;
+    color: #4a5568;
+    font-size: 14px;
+}
+
+.invitation-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.invitation-status.registered {
+    color: #38a169;
+}
+
+.invitation-status.pending {
+    color: #3182ce;
+}
+
+.invitation-status i {
+    font-size: 10px;
+}
+
+@media (max-width: 768px) {
+    .floor-header-section {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+    
+    .floor-stats-summary {
+        justify-content: center;
+    }
+    
+    .units-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+</style>
+
+<script>
+function viewUnitDetails(unitId) {
+    window.location.href = `/client_relations/unit/${unitId}`;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,815 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.project_name }} - Client Dashboard{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('client_relations.dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="active">
+                <a href="#">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>My Projects</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('client_relations.documents') }}">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Documents</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-comments"></i>
+                    <span>Messages</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Appointments</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Profile</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('client_relations.logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">
+                    <a href="{{ url_for('client_relations.dashboard') }}">Dashboard</a>
+                    <span>/</span>
+                    <span>{{ project.project_name }}</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                
+                <div class="profile-dropdown">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session.client_name or 'Client' }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Project Details Content -->
+        <div class="project-details-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Project Header -->
+            <div class="project-header-section">
+                <div class="project-info">
+                    <h1>{{ project.project_name }}</h1>
+                    {% if project.project_description %}
+                    <p class="project-description">{{ project.project_description }}</p>
+                    {% endif %}
+                    <div class="project-meta">
+                        <span class="meta-item">
+                            <i class="fas fa-calendar"></i>
+                            Created: {{ project.created_at.strftime('%B %d, %Y') }}
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-layer-group"></i>
+                            {{ floors|length }} Floors
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-home"></i>
+                            {{ floors|sum(attribute='unit_count') or 0 }} Total Units
+                        </span>
+                    </div>
+                    <div class="project-actions">
+                        <button class="btn btn-primary" onclick="showAssignOwnerModal()">
+                            <i class="fas fa-user-plus"></i>
+                            Assign Owner
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floors Section -->
+            <div class="floors-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-building"></i> Floors</h3>
+                </div>
+                
+                {% if floors %}
+                <div class="floors-grid">
+                    {% for floor in floors %}
+                    <div class="floor-card" onclick="viewFloorDetails({{ project.id }}, {{ floor.id }})">
+                        <div class="floor-name">{{ floor.floor_name }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <h4>No Floors Available</h4>
+                    <p>This project doesn't have any floors yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Owner Modal -->
+<div id="assignOwnerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-user-plus"></i> Assign Unit Owner</h2>
+            <span class="close" onclick="closeAssignOwnerModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="assignOwnerForm">
+                <div class="form-group">
+                    <label for="selectUnit">Select Unit</label>
+                    <select id="selectUnit" name="unit_id" required>
+                        <option value="">Choose a unit...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="ownerName">Owner Name</label>
+                    <input type="text" id="ownerName" name="owner_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="ownerEmail">Email Address</label>
+                    <input type="email" id="ownerEmail" name="owner_email" required>
+                    <div id="emailValidation" class="validation-feedback"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ownerPhone">Phone Number</label>
+                    <div class="phone-input-group">
+                        <select name="country_code" id="countryCode">
+                            <option value="+91">+91 (India)</option>
+                            <option value="+1">+1 (USA)</option>
+                            <option value="+44">+44 (UK)</option>
+                            <option value="+61">+61 (Australia)</option>
+                            <option value="+971">+971 (UAE)</option>
+                        </select>
+                        <input type="tel" id="ownerPhone" name="owner_phone" required>
+                    </div>
+                    <div id="phoneValidation" class="validation-feedback"></div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeAssignOwnerModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="assignOwner()">
+                <i class="fas fa-user-plus"></i> Assign Owner
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Project Details Styles */
+.project-details-content {
+    padding: 30px;
+}
+
+.project-header-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.project-info h1 {
+    margin: 0 0 10px 0;
+    color: #2d3748;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.project-description {
+    color: #718096;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.project-meta {
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #4a5568;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.meta-item i {
+    color: #667eea;
+}
+
+.project-actions {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #4a5568;
+    font-size: 14px;
+}
+
+.breadcrumb a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.floors-section {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.section-header {
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.section-header h3 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.floors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.floor-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.floor-card:hover {
+    border-color: #4299e1;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(66, 153, 225, 0.12);
+}
+
+.floor-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a202c;
+    text-align: center;
+}
+
+
+
+
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #a0aec0;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.empty-state h4 {
+    margin: 0 0 8px 0;
+    color: #4a5568;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 20px 25px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.close {
+    color: #a0aec0;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close:hover {
+    color: #4a5568;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 15px 25px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #2d3748;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 50px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.phone-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.phone-input-group select {
+    flex: 0 0 120px;
+}
+
+.phone-input-group input {
+    flex: 1;
+}
+
+.validation-feedback {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.validation-feedback.success {
+    background: #c6f6d5;
+    color: #2f855a;
+    border: 1px solid #9ae6b4;
+}
+
+.validation-feedback.error {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 20px;
+}
+
+.flash-message {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.flash-success {
+    background: #c6f6d5;
+    color: #2f855a;
+    border: 1px solid #9ae6b4;
+}
+
+.flash-error {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .project-header-section {
+        flex-direction: column;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    .project-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .floors-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .floor-stats {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .stat .number {
+        font-size: 18px;
+    }
+}
+</style>
+
+<script>
+function viewFloorDetails(projectId, floorId) {
+    window.location.href = `/client_relations/project/${projectId}/floor/${floorId}`;
+}
+
+function showAssignOwnerModal() {
+    loadAvailableUnits();
+    document.getElementById('assignOwnerModal').style.display = 'block';
+}
+
+function closeAssignOwnerModal() {
+    document.getElementById('assignOwnerModal').style.display = 'none';
+    document.getElementById('assignOwnerForm').reset();
+    clearValidationMessages();
+}
+
+function loadAvailableUnits() {
+    const selectUnit = document.getElementById('selectUnit');
+    const projectId = {{ project.id }};
+
+    // Clear existing options
+    selectUnit.innerHTML = '<option value="">Loading units...</option>';
+
+    fetch(`/client_relations/api/project/${projectId}/available-units`)
+        .then(response => response.json())
+        .then(data => {
+            selectUnit.innerHTML = '<option value="">Choose a unit...</option>';
+
+            if (data.success && data.units.length > 0) {
+                data.units.forEach(unit => {
+                    const option = document.createElement('option');
+                    option.value = unit.id;
+                    option.textContent = `${unit.floor_name} - Unit ${unit.unit_number}`;
+                    selectUnit.appendChild(option);
+                });
+            } else {
+                selectUnit.innerHTML = '<option value="">No available units</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading units:', error);
+            selectUnit.innerHTML = '<option value="">Error loading units</option>';
+        });
+}
+
+function assignOwner() {
+    const form = document.getElementById('assignOwnerForm');
+    const formData = new FormData(form);
+
+    const data = {
+        unit_id: formData.get('unit_id'),
+        owner_name: formData.get('owner_name'),
+        owner_email: formData.get('owner_email'),
+        owner_phone: formData.get('owner_phone'),
+        country_code: formData.get('country_code')
+    };
+
+    // Validate required fields
+    if (!data.unit_id || !data.owner_name || !data.owner_email || !data.owner_phone) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    // Show loading state
+    const assignBtn = event.target;
+    const originalText = assignBtn.innerHTML;
+    assignBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
+    assignBtn.disabled = true;
+
+    fetch('/client_relations/api/assign-owner', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Restore button
+        assignBtn.innerHTML = originalText;
+        assignBtn.disabled = false;
+
+        if (data.success) {
+            closeAssignOwnerModal();
+            showNotification('success', data.message);
+            // Reload page to show updated data
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        // Restore button
+        assignBtn.innerHTML = originalText;
+        assignBtn.disabled = false;
+
+        console.error('Error:', error);
+        alert('Error assigning owner');
+    });
+}
+
+function clearValidationMessages() {
+    const validationElements = document.querySelectorAll('.validation-feedback');
+    validationElements.forEach(el => {
+        el.textContent = '';
+        el.className = 'validation-feedback';
+    });
+}
+
+function showNotification(type, message) {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(n => n.remove());
+
+    // Create notification
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+        <span>${message}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+    `;
+
+    // Add to page
+    document.body.appendChild(notification);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Real-time validation
+document.addEventListener('DOMContentLoaded', function() {
+    const emailInput = document.getElementById('ownerEmail');
+    const phoneInput = document.getElementById('ownerPhone');
+
+    // Email validation
+    if (emailInput) {
+        let emailTimeout;
+        emailInput.addEventListener('input', function() {
+            const email = this.value.trim();
+            const feedback = document.getElementById('emailValidation');
+
+            clearTimeout(emailTimeout);
+
+            if (!email) {
+                feedback.textContent = '';
+                feedback.className = 'validation-feedback';
+                return;
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showValidation('emailValidation', 'error', 'Invalid email format');
+                return;
+            }
+
+            emailTimeout = setTimeout(() => {
+                showValidation('emailValidation', 'success', 'Valid email format');
+            }, 500);
+        });
+    }
+
+    // Phone validation
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            const phone = this.value.trim();
+            const feedback = document.getElementById('phoneValidation');
+
+            if (!phone) {
+                feedback.textContent = '';
+                feedback.className = 'validation-feedback';
+                return;
+            }
+
+            if (!/^\d{10,14}$/.test(phone)) {
+                showValidation('phoneValidation', 'error', 'Phone number must be 10-14 digits');
+            } else {
+                showValidation('phoneValidation', 'success', 'Valid phone number');
+            }
+        });
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('assignOwnerModal');
+        if (event.target === modal) {
+            closeAssignOwnerModal();
+        }
+    }
+});
+
+function showValidation(elementId, type, message) {
+    const element = document.getElementById(elementId);
+    element.textContent = message;
+    element.className = `validation-feedback ${type}`;
+}
+</script>
+{% endblock %}
